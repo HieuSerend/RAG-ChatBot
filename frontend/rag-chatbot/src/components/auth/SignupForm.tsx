@@ -18,7 +18,7 @@ export default function SignupForm() {
         try {
             await register({ username, password });
             navigate("/auth/login", { replace: true });
-        } catch (err) {
+        } catch {
             setError("Đăng ký thất bại");
         }
     }
@@ -52,7 +52,7 @@ export default function SignupForm() {
             <p className="text-sm text-red-500">{error}</p>
         }
 
-    <button type="submit" disabled={!isValid} className="bg-blue-600 text-white p-2 rounded-lg">Đăng ký</button>
+    <button type="submit" disabled={!isValid} className="bg-blue-600 text-white p-2 rounded-lg active:opacity-60 transition-opacity duration-150">Đăng ký</button>
         </form>
     );
 }

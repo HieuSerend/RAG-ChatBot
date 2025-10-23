@@ -21,8 +21,9 @@ export default function LoginForm() {
       } else {
         setMessage("Đăng nhập không thành công");
       }
-    } catch (err: any) {
-      setMessage(err?.response?.data?.message || "Lỗi khi đăng nhập");
+    } catch (err: unknown) {
+  const messageText = (err as unknown as { response?: { data?: { message?: string } } })?.response?.data?.message || "Lỗi khi đăng nhập";
+      setMessage(messageText);
     } finally {
       setLoading(false);
     }
@@ -46,11 +47,11 @@ export default function LoginForm() {
         onChange={(e) => setPassword(e.target.value)}
         required
       />
-      <button className="px-3 py-2 rounded-lg bg-indigo-600 text-white font-semibold" type="submit" disabled={loading}>
+      <button className="px-3 py-2 rounded-lg bg-indigo-600 text-white font-semibold active:opacity-60 transition-opacity duration-150" type="submit" disabled={loading}>
         {loading ? "Đang xử lý..." : "Đăng nhập"}
       </button>
       <div className="flex flex-row space-x-2 justify-center">
-        <button className="text-blue-600 font-semibold" type="button" onClick={() => navigate("/auth/signup")} disabled={loading}>
+        <button className="text-blue-600 font-semibold active:opacity-60 transition-opacity duration-150" type="button" onClick={() => navigate("/auth/signup")} disabled={loading}>
             Đăng ký
         </button>
         <p> nếu chưa có tài khoản</p>
