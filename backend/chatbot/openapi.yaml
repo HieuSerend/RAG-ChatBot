@@ -1,0 +1,476 @@
+openapi: 3.0.3
+info:
+  title: RAG Chatbot API
+  description: |
+    API cho hệ thống RAG Chatbot với xác thực JWT.
+    
+    ## Tính năng chính:
+    - Xác thực và phân quyền người dùng
+    - Quản lý người dùng
+    - JWT token với access token và refresh token
+    
+    ## Bảo mật:
+    - Sử dụng JWT Bearer token để xác thực
+    - Access token có thời gian sống ngắn (2000s)
+    - Refresh token có thời gian sống dài hơn (10000s)
+  version: 0.0.1
+  contact:
+    name: Team 14
+    email: team14@example.com
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+
+servers:
+  - url: http://localhost:8080
+    description: Development server
+
+tags:
+  - name: Authentication
+    description: API xác thực và quản lý token
+  - name: User
+    description: API quản lý người dùng
+
+paths:
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Đăng nhập người dùng
+      description: Xác thực người dùng và trả về access token và refresh token
+      operationId: authenticate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthenticateRequest'
+            examples:
+              validLogin:
+                summary: Đăng nhập hợp lệ
+                value:
+                  username: "user123"
+                  password: "password123"
+      responses:
+        '200':
+          description: Đăng nhập thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AuthenticateResponse'
+              examples:
+                success:
+                  summary: Đăng nhập thành công
+                  value:
+                    code: 1000
+                    message: "Success!"
+                    data:
+                      valid: true
+                      accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                      refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        '400':
+          description: Yêu cầu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                userNotFound:
+                  summary: Người dùng không tồn tại
+                  value:
+                    code: 1003
+                    message: "user not existed"
+        '401':
+          description: Xác thực thất bại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                unauthenticated:
+                  summary: Xác thực thất bại
+                  value:
+                    code: 1001
+                    message: "authenticated error"
+
+  /auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: Đăng xuất người dùng
+      description: Hủy access token và refresh token hiện tại
+      operationId: logout
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogoutRequest'
+            examples:
+              validLogout:
+                summary: Đăng xuất hợp lệ
+                value:
+                  accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+      responses:
+        '200':
+          description: Đăng xuất thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        nullable: true
+              examples:
+                success:
+                  summary: Đăng xuất thành công
+                  value:
+                    code: 1000
+                    message: "Success!"
+                    data: null
+        '400':
+          description: Token không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token không hợp lệ hoặc đã hết hạn
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Làm mới token
+      description: Sử dụng refresh token để lấy access token và refresh token mới
+      operationId: refreshToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+            examples:
+              validRefresh:
+                summary: Làm mới token hợp lệ
+                value:
+                  refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+      responses:
+        '200':
+          description: Làm mới token thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AuthenticateResponse'
+              examples:
+                success:
+                  summary: Làm mới token thành công
+                  value:
+                    code: 1000
+                    message: "Success!"
+                    data:
+                      valid: true
+                      accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                      refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        '400':
+          description: Refresh token không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Refresh token đã hết hạn hoặc không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /user/register:
+    post:
+      tags:
+        - User
+      summary: Đăng ký người dùng mới
+      description: Tạo tài khoản người dùng mới trong hệ thống
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreationRequest'
+            examples:
+              validRegistration:
+                summary: Đăng ký hợp lệ
+                value:
+                  username: "newuser123"
+                  password: "securePassword123"
+      responses:
+        '200':
+          description: Đăng ký thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/UserResponse'
+              examples:
+                success:
+                  summary: Đăng ký thành công
+                  value:
+                    code: 1000
+                    message: "Success!"
+                    data:
+                      id: "550e8400-e29b-41d4-a716-446655440000"
+                      username: "newuser123"
+                      password: "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy"
+        '400':
+          description: Dữ liệu không hợp lệ hoặc người dùng đã tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                userExisted:
+                  summary: Người dùng đã tồn tại
+                  value:
+                    code: 1002
+                    message: "user existed"
+
+  /user/my-info:
+    get:
+      tags:
+        - User
+      summary: Lấy thông tin người dùng hiện tại
+      description: Lấy thông tin chi tiết của người dùng đang đăng nhập (yêu cầu xác thực)
+      operationId: getMyInfo
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lấy thông tin thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/UserResponse'
+              examples:
+                success:
+                  summary: Lấy thông tin thành công
+                  value:
+                    code: 1000
+                    message: "Success!"
+                    data:
+                      id: "550e8400-e29b-41d4-a716-446655440000"
+                      username: "user123"
+                      password: "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy"
+        '401':
+          description: Chưa xác thực hoặc token không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                unauthenticated:
+                  summary: Chưa xác thực
+                  value:
+                    code: 1001
+                    message: "authenticated error"
+        '403':
+          description: Không có quyền truy cập
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                unauthorized:
+                  summary: Không có quyền
+                  value:
+                    code: 1005
+                    message: "You do not have permission"
+
+components:
+  schemas:
+    AuthenticateRequest:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+          description: Tên đăng nhập của người dùng
+          example: "user123"
+          minLength: 3
+          maxLength: 255
+        password:
+          type: string
+          description: Mật khẩu của người dùng
+          format: password
+          example: "password123"
+          minLength: 6
+
+    LogoutRequest:
+      type: object
+      required:
+        - accessToken
+        - refreshToken
+      properties:
+        accessToken:
+          type: string
+          description: Access token cần hủy
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+        refreshToken:
+          type: string
+          description: Refresh token cần hủy
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+
+    RefreshTokenRequest:
+      type: object
+      required:
+        - refreshToken
+      properties:
+        refreshToken:
+          type: string
+          description: Refresh token để lấy token mới
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+
+    UserCreationRequest:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+          description: Tên đăng nhập của người dùng mới (phải là duy nhất)
+          example: "newuser123"
+          minLength: 3
+          maxLength: 255
+        password:
+          type: string
+          description: Mật khẩu cho tài khoản mới
+          format: password
+          example: "securePassword123"
+          minLength: 6
+
+    ApiResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int64
+          description: Mã trạng thái của phản hồi (1000 là thành công)
+          example: 1000
+          default: 1000
+        message:
+          type: string
+          description: Thông điệp mô tả kết quả
+          example: "Success!"
+          default: "Success!"
+        data:
+          type: object
+          description: Dữ liệu phản hồi (có thể là null)
+          nullable: true
+
+    AuthenticateResponse:
+      type: object
+      properties:
+        valid:
+          type: boolean
+          description: Trạng thái xác thực có hợp lệ hay không
+          example: true
+        accessToken:
+          type: string
+          description: JWT access token (thời gian sống 2000 giây)
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+        refreshToken:
+          type: string
+          description: JWT refresh token (thời gian sống 10000 giây)
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: ID duy nhất của người dùng (UUID)
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        username:
+          type: string
+          description: Tên đăng nhập của người dùng
+          example: "user123"
+        password:
+          type: string
+          description: Mật khẩu đã được mã hóa (BCrypt)
+          example: "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy"
+
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int64
+          description: Mã lỗi
+          example: 1001
+          enum:
+            - 1001  # UNAUTHENTICATED
+            - 1002  # USER_EXISTED
+            - 1003  # USER_NOT_EXISTED
+            - 1004  # ROLE_NOT_EXISTED
+            - 1005  # UNAUTHORIZED
+            - 1006  # UNCATEGORIZED
+        message:
+          type: string
+          description: Thông điệp lỗi
+          example: "authenticated error"
+        data:
+          type: object
+          nullable: true
+          description: Dữ liệu bổ sung về lỗi (thường là null)
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT Bearer token để xác thực.
+        
+        **Cách sử dụng:**
+        1. Đăng nhập qua `/auth/login` để lấy access token
+        2. Thêm access token vào header: `Authorization: Bearer <token>`
+        3. Access token có thời gian sống 2000 giây
+        4. Khi hết hạn, sử dụng `/auth/refresh` với refresh token để lấy token mới
+        
+        **Lưu ý:**
+        - Refresh token có thời gian sống 10000 giây
+        - Token được ký bằng HS512 algorithm
+
+security:
+  - bearerAuth: []
