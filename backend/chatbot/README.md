@@ -1,5 +1,7 @@
 # 🤖 RAG Chatbot Backend
 
+## Swagger: openapi.yaml
+
 Hệ thống backend cho RAG Chatbot sử dụng Spring Boot 3.5.6 với JWT Authentication và PostgreSQL.
 
 ## 📋 Mục lục
