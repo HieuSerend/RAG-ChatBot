@@ -5,12 +5,21 @@
 Hệ thống backend cho RAG Chatbot sử dụng Spring Boot 3.5.6 với JWT Authentication và PostgreSQL.
 
 ## 📋 Mục lục
-
+- [Update cấu hình](#update-cấu-hình)
 - [Yêu cầu hệ thống](#yêu-cầu-hệ-thống)
 - [Cài đặt](#cài-đặt)
 - [Cấu hình](#cấu-hình)
 - [Chạy ứng dụng](#chạy-ứng-dụng)
 
+## Update cấu hình
+1. Postgres
+  - Chạy Postgres bằng docker để xài được PGVector (Windows khó xài)
+  - `docker compose up -d` để chạy db Postgres trên docker
+  - Vào cmd, chạy lệnh: `docker exec -it <container_name> pgvector psql -U <username>` để truy cập db trên docker  
+    Eg:  `docker exec -it pgvector psql -U postgres` 
+  - `CREATE EXTENSION IF NOT EXISTS vector;` để bật pgvector
+2. GEMINI_API_KEY
+ - Vào edit configuration trong Intellij, thêm env GEMINI_API_KEY
 
 ## 🔧 Yêu cầu hệ thống
 
