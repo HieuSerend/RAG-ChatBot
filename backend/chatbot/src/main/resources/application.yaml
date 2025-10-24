@@ -4,9 +4,9 @@ spring:
   application:
     name: chatbot
   datasource:
-    url: jdbc:postgresql://localhost:5432/rag_chatbot
+    url: jdbc:postgresql://localhost:5433/rag_chatbot
     username: postgres
-    password: postgres
+    password: password
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -15,6 +15,33 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  ai:
+    model:
+      chat: google-genai
+    google:
+      genai:
+        api-key: ${GEMINI_API_KEY}
+        chat:
+          options:
+            model: gemini-2.5-flash
+        embedding:
+          api-key: ${GEMINI_API_KEY}
+          text:
+            options:
+              models: text-embedding-004
+
+
+    vectorstore:
+      pgvector:
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+        dimensions: 768
+        initialize-schema: true
+        schema-name: public
+        table-name: documents
+
+
 
 
 jwt:

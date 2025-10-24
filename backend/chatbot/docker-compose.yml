@@ -1,0 +1,11 @@
+
+services:
+  pgvector:
+    image: pgvector/pgvector:0.8.1-pg16
+    container_name: pgvector
+    environment:
+      POSTGRES_PASSWORD: password
+      POSTGRES_USER: postgres
+      POSTGRES_DB: rag_chatbot
+    ports:
+      - "5433:5432"
