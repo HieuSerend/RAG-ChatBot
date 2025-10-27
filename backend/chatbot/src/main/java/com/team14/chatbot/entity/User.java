@@ -28,4 +28,5 @@ public class User {
     String email;
     String phoneNumber;
     LocalDate birthday;
+    String preferences;
 }

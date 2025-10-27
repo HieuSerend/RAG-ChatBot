@@ -19,4 +19,5 @@ public class UserUpdationRequest {
     String email;
     String phoneNumber;
     LocalDate birthday;
+    String preferences;
 }
