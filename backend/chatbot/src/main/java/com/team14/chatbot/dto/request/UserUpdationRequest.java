@@ -11,8 +11,7 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class UserCreationRequest {
-    String username;
+public class UserUpdationRequest {
     String password;
     String firstName;
     String lastName;

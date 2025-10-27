@@ -15,4 +15,10 @@ public class UserResponse {
     String id;
     String username;
     String password;
+    String firstName;
+    String lastName;
+    boolean gender;
+    String email;
+    String phoneNumber;
+    LocalDate birthday;
 }
