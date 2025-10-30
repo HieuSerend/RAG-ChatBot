@@ -101,7 +101,7 @@ export default function ChatBox() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-white rounded-lg shadow-sm border border-slate-200">
+    <div className="flex flex-col h-full bg-white">
       {/* Messages Container */}
       <div
         ref={messagesContainerRef}
