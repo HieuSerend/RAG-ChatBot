@@ -25,12 +25,7 @@ export default function Home() {
                 <li>
                   <button className="w-full text-left px-3 py-2 rounded hover:bg-slate-50">New chat</button>
                 </li>
-                <li>
-                  <button className="w-full text-left px-3 py-2 rounded hover:bg-slate-50">History</button>
-                </li>
-                <li>
-                  <button className="w-full text-left px-3 py-2 rounded hover:bg-slate-50">Settings</button>
-                </li>
+                
               </ul>
             </nav>
             <div className="mt-4">
