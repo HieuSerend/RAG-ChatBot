@@ -1,16 +1,5 @@
-import axios, {
-  AxiosError,
-  type AxiosInstance,
-  type AxiosRequestConfig,
-  type InternalAxiosRequestConfig,
-  type AxiosRequestHeaders,
-} from "axios";
-import {
-  getAccessToken,
-  getRefreshToken,
-  setTokens,
-  clearTokens,
-} from "../services/authService";
+import axios, { AxiosError, type AxiosInstance, type AxiosRequestConfig, type InternalAxiosRequestConfig, type AxiosRequestHeaders } from "axios";
+import { getAccessToken, getRefreshToken, setTokens, clearTokens } from "../services/authService";
 
 // In development proxy /api to the backend to avoid CORS (see vite.config.ts).
 // Use VITE_API_BASE_URL to override in production if needed.
@@ -18,7 +7,7 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
 const api: AxiosInstance = axios.create({
   baseURL: BASE_URL,
-  headers: { "Content-Type": "application/json" },
+  headers: { "Content-Type": "application/json" },  
   timeout: 20000,
 });
 
@@ -36,7 +25,7 @@ async function refreshAccessToken(): Promise<string | null> {
       const res = await axios.post(
         `${BASE_URL}/auth/refresh`,
         { refreshToken },
-        { headers: { "Content-Type": "application/json" } },
+        { headers: { "Content-Type": "application/json" } }
       );
       const data = res.data?.data;
       if (data?.accessToken && data?.refreshToken) {
@@ -64,9 +53,7 @@ const PUBLIC_ENDPOINTS = [
   "/auth/logout",
 ];
 
-function isPublicRequest(
-  config?: InternalAxiosRequestConfig | AxiosRequestConfig,
-): boolean {
+function isPublicRequest(config?: InternalAxiosRequestConfig | AxiosRequestConfig): boolean {
   if (!config || !config.url) return false;
   // If url is absolute, extract pathname
   let path = config.url as string;
@@ -86,12 +73,9 @@ api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     // allow callers to explicitly skip auth by setting X-Skip-Auth
     const headers = config.headers as AxiosRequestHeaders | undefined;
-    if (
-      headers &&
-      (headers["X-Skip-Auth"] === "true" || headers["X-Skip-Auth"] === true)
-    ) {
+    if (headers && (headers["X-Skip-Auth"] === "true" || headers["X-Skip-Auth"] === true)) {
       // remove the helper header so it doesn't get sent to server
-      delete (headers as unknown as Record<string, unknown>)["X-Skip-Auth"];
+      delete (headers as unknown as Record<string, unknown>) ["X-Skip-Auth"];
       return config;
     }
 
@@ -100,46 +84,35 @@ api.interceptors.request.use(
     const token = getAccessToken();
     if (token && config.headers) {
       // merge to avoid type incompatibilities with AxiosRequestHeaders implementation
-      config.headers = Object.assign(
-        {},
-        config.headers as unknown as Record<string, string>,
-        {
-          Authorization: `Bearer ${token}`,
-        },
-      ) as unknown as AxiosRequestHeaders;
+      config.headers = Object.assign({}, (config.headers as unknown as Record<string, string>), {
+        Authorization: `Bearer ${token}`,
+      }) as unknown as AxiosRequestHeaders;
     }
     return config;
   },
-  (error) => Promise.reject(error),
+  (error) => Promise.reject(error)
 );
 
 // Response interceptor: on 401 try refresh then retry original request once
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & {
-      _retry?: boolean;
-    };
+    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       const newToken = await refreshAccessToken();
       if (newToken) {
         // set authorization header and retry
-        if (!originalRequest.headers)
-          originalRequest.headers = {} as AxiosRequestHeaders;
-        originalRequest.headers = Object.assign(
-          {},
-          originalRequest.headers as unknown as Record<string, string>,
-          {
-            Authorization: `Bearer ${newToken}`,
-          },
-        ) as unknown as AxiosRequestHeaders;
+        if (!originalRequest.headers) originalRequest.headers = {} as AxiosRequestHeaders;
+        originalRequest.headers = Object.assign({}, (originalRequest.headers as unknown as Record<string, string>), {
+          Authorization: `Bearer ${newToken}`,
+        }) as unknown as AxiosRequestHeaders;
         return api(originalRequest);
       }
       // refresh failed, propagate error (frontend will redirect to /auth according to ProtectedRoute)
     }
     return Promise.reject(error);
-  },
+  }
 );
 
 export default api;
