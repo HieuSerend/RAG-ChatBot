@@ -4,7 +4,6 @@ import Home from "../pages/Home/Home";
 import Login from "../pages/Auth/Login";
 import ProtectedRoute from "./ProtectedRoute";
 import Signup from "../pages/Auth/Signup";
-import Profile from "../pages/Profile/Profile";
 
 export default function AppRoutes() {
   return (
@@ -20,12 +19,6 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       />
-
-      <Route path="/profile" element={
-        <ProtectedRoute>
-          <Profile />
-        </ProtectedRoute>
-      } />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
