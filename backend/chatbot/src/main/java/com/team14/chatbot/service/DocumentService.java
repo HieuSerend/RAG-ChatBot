@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.document.DocumentReader;
+import org.springframework.ai.embedding.Embedding;
 import org.springframework.ai.reader.pdf.PagePdfDocumentReader;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.VectorStore;
@@ -125,13 +126,13 @@ public class DocumentService {
             chunk.getMetadata().put("source", filePath.getFileName().toString());
         });
 
+
         // Step 3: Generate embeddings and store in vector database
         // The VectorStore automatically:
         // - Generates embeddings using the configured embedding model (OpenAI)
         // - Stores the embeddings in pgvector
         vectorStore.add(chunks);
 
-        log.info("Successfully stored {} chunks in vector database", chunks.size());
 
         // Update chunk count in document metadata
         Document document = documentRepository.findById(documentId).orElseThrow();

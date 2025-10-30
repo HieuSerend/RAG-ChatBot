@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS vector_store (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     content TEXT NOT NULL,
     metadata JSON,
-    embedding vector(1536) NOT NULL,
+    embedding vector(768) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
