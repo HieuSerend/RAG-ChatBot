@@ -10,11 +10,23 @@ export default function Home() {
     navigate("/auth/login", { replace: true });
   };
 
+  const handleLogout = async () => {
+    await logout();
+    navigate("/auth/login", { replace: true });
+  };
+
   return (
     <div className="min-h-screen bg-slate-100">
       <div className="max-w-screen-xl mx-auto px-4 py-6">
         <div className="flex gap-6">
+    <div className="min-h-screen bg-slate-100">
+      <div className="max-w-screen-xl mx-auto px-4 py-6">
+        <div className="flex gap-6">
           {/* Left sidebar */}
+          <aside className="w-64 bg-white rounded-lg shadow-sm p-4 flex flex-col">
+            <div className="mb-6">
+              <h2 className="text-xl font-bold">DocuChat</h2>
+              <p className="text-sm text-slate-500">RAG Chatbot</p>
           <aside className="w-64 bg-white rounded-lg shadow-sm p-4 flex flex-col">
             <div className="mb-6">
               <h2 className="text-xl font-bold">DocuChat</h2>
@@ -37,7 +49,10 @@ export default function Home() {
               <button
                 onClick={handleLogout}
                 className="w-full bg-red-500 hover:bg-red-600 text-white py-2 rounded-md"
+                onClick={handleLogout}
+                className="w-full bg-red-500 hover:bg-red-600 text-white py-2 rounded-md"
               >
+                Đăng xuất
                 Đăng xuất
               </button>
             </div>
