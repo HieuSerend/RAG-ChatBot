@@ -15,9 +15,10 @@ export default function AppRoutes() {
       <Route
         path="/"
         element={
-          <ProtectedRoute>
-            <Home />
-          </ProtectedRoute>
+          // <ProtectedRoute>
+          //   <Home />
+          // </ProtectedRoute>
+          <Home />
         }
       />
 

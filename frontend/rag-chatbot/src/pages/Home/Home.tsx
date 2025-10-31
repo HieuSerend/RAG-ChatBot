@@ -14,7 +14,6 @@ export default function Home() {
         <div className="flex h-screen">
           {/* Left sidebar */}
           <aside className="w-64 bg-gray-100 p-4 border-r border-black/10 flex flex-col">
-            {/* Top: logo + primary actions (always at top) */}
             <div>
               <div className="mb-6">
                 <h2 className="text-xl font-bold">DocuChat</h2>
