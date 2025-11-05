@@ -2,6 +2,7 @@ package com.team14.chatbot.service;
 
 
 import com.team14.chatbot.dto.request.UserCreationRequest;
+import com.team14.chatbot.dto.request.UserUpdationRequest;
 import com.team14.chatbot.dto.response.UserResponse;
 import com.team14.chatbot.entity.User;
 import com.team14.chatbot.exception.AppException;
@@ -40,6 +41,14 @@ public class UserService {
             throw new AppException(ErrorCode.USER_EXISTED);
         }
         return userMapper.toUserResponse(user);
+    }
+
+    public UserResponse updateMyProfile(UserUpdationRequest request) throws AppException {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByUsername(username).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        userMapper.update(user, request);
+        return userMapper.toUserResponse(userRepository.save(user));
+
     }
 
     public UserResponse getMyInfo() throws AppException {

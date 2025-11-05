@@ -30,6 +30,10 @@ tags:
     description: API xác thực và quản lý token
   - name: User
     description: API quản lý người dùng
+  - name: Conversation
+    description: API quản lý cuộc hội thoại
+  - name: Message
+    description: API quản lý tin nhắn
 
 paths:
   /auth/login:
@@ -288,6 +292,13 @@ paths:
                       id: "550e8400-e29b-41d4-a716-446655440000"
                       username: "user123"
                       password: "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy"
+                      firstName: "John"
+                      lastName: "Doe"
+                      gender: true
+                      email: "john.doe@example.com"
+                      phoneNumber: "+84123456789"
+                      birthday: "1990-01-01"
+                      preferences: "Dark mode, Vietnamese"
         '401':
           description: Chưa xác thực hoặc token không hợp lệ
           content:
@@ -312,6 +323,339 @@ paths:
                   value:
                     code: 1005
                     message: "You do not have permission"
+
+  /user/update-my-info:
+    put:
+      tags:
+        - User
+      summary: Cập nhật thông tin người dùng hiện tại
+      description: Cập nhật thông tin cá nhân của người dùng đang đăng nhập (yêu cầu xác thực)
+      operationId: updateMyInfo
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdationRequest'
+            examples:
+              validUpdate:
+                summary: Cập nhật hợp lệ
+                value:
+                  password: "newPassword123"
+                  firstName: "John"
+                  lastName: "Doe"
+                  gender: true
+                  email: "john.doe@example.com"
+                  phoneNumber: "+84123456789"
+                  birthday: "1990-01-01"
+                  preferences: "Dark mode, Vietnamese"
+      responses:
+        '200':
+          description: Cập nhật thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/UserResponse'
+              examples:
+                success:
+                  summary: Cập nhật thành công
+                  value:
+                    code: 1000
+                    message: "Success!"
+                    data:
+                      id: "550e8400-e29b-41d4-a716-446655440000"
+                      username: "user123"
+                      password: "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy"
+                      firstName: "John"
+                      lastName: "Doe"
+                      gender: true
+                      email: "john.doe@example.com"
+                      phoneNumber: "+84123456789"
+                      birthday: "1990-01-01"
+                      preferences: "Dark mode, Vietnamese"
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Chưa xác thực hoặc token không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /conversation/create:
+    post:
+      tags:
+        - Conversation
+      summary: Tạo cuộc hội thoại mới
+      description: Tạo một cuộc hội thoại mới cho người dùng hiện tại (yêu cầu xác thực)
+      operationId: createConversation
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConversationRequest'
+            examples:
+              validConversation:
+                summary: Tạo cuộc hội thoại hợp lệ
+                value:
+                  title: "Cuộc hội thoại về AI"
+      responses:
+        '200':
+          description: Tạo cuộc hội thoại thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ConversationResponse'
+              examples:
+                success:
+                  summary: Tạo thành công
+                  value:
+                    code: 1000
+                    message: "Success!"
+                    data:
+                      id: "conv-550e8400-e29b-41d4-a716-446655440000"
+                      title: "Cuộc hội thoại về AI"
+                      userId: "550e8400-e29b-41d4-a716-446655440000"
+                      createdDate: "2025-10-27T10:15:30Z"
+        '401':
+          description: Chưa xác thực hoặc token không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /conversation/list:
+    get:
+      tags:
+        - Conversation
+      summary: Lấy danh sách cuộc hội thoại
+      description: Lấy tất cả cuộc hội thoại của người dùng hiện tại (yêu cầu xác thực)
+      operationId: listConversations
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lấy danh sách thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/ConversationResponse'
+              examples:
+                success:
+                  summary: Danh sách cuộc hội thoại
+                  value:
+                    code: 1000
+                    message: "Success!"
+                    data:
+                      - id: "conv-1"
+                        title: "Cuộc hội thoại về AI"
+                        userId: "550e8400-e29b-41d4-a716-446655440000"
+                        createdDate: "2025-10-27T10:15:30Z"
+                      - id: "conv-2"
+                        title: "Hỏi về lập trình"
+                        userId: "550e8400-e29b-41d4-a716-446655440000"
+                        createdDate: "2025-10-27T09:00:00Z"
+        '401':
+          description: Chưa xác thực hoặc token không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /conversation/delete/{id}:
+    delete:
+      tags:
+        - Conversation
+      summary: Xóa cuộc hội thoại
+      description: Xóa một cuộc hội thoại theo ID (yêu cầu xác thực)
+      operationId: deleteConversation
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID của cuộc hội thoại cần xóa
+          schema:
+            type: string
+          example: "conv-550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: Xóa thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        nullable: true
+              examples:
+                success:
+                  summary: Xóa thành công
+                  value:
+                    code: 1000
+                    message: "Success!"
+                    data: null
+        '401':
+          description: Chưa xác thực hoặc token không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Không tìm thấy cuộc hội thoại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /message/create:
+    post:
+      tags:
+        - Message
+      summary: Tạo tin nhắn mới
+      description: Tạo một tin nhắn mới trong cuộc hội thoại (yêu cầu xác thực)
+      operationId: createMessage
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageRequest'
+            examples:
+              validMessage:
+                summary: Tạo tin nhắn hợp lệ
+                value:
+                  text: "Xin chào, bạn có thể giúp tôi về AI không?"
+                  conversationId: "conv-550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: Tạo tin nhắn thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/MessageResponse'
+              examples:
+                success:
+                  summary: Tạo thành công
+                  value:
+                    code: 1000
+                    message: "Success!"
+                    data:
+                      id: "msg-550e8400-e29b-41d4-a716-446655440000"
+                      text: "Xin chào, bạn có thể giúp tôi về AI không?"
+                      conversationId: "conv-550e8400-e29b-41d4-a716-446655440000"
+                      userId: "550e8400-e29b-41d4-a716-446655440000"
+                      isMe: true
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Chưa xác thực hoặc token không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /message/list/{conversationId}:
+    get:
+      tags:
+        - Message
+      summary: Lấy danh sách tin nhắn
+      description: Lấy tất cả tin nhắn trong một cuộc hội thoại (yêu cầu xác thực)
+      operationId: listMessages
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          description: ID của cuộc hội thoại
+          schema:
+            type: string
+          example: "conv-550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: Lấy danh sách tin nhắn thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/MessageResponse'
+              examples:
+                success:
+                  summary: Danh sách tin nhắn
+                  value:
+                    code: 1000
+                    message: "Success!"
+                    data:
+                      - id: "msg-1"
+                        text: "Xin chào, bạn có thể giúp tôi về AI không?"
+                        conversationId: "conv-550e8400-e29b-41d4-a716-446655440000"
+                        userId: "550e8400-e29b-41d4-a716-446655440000"
+                        isMe: true
+                      - id: "msg-2"
+                        text: "Chào bạn! Tôi có thể giúp gì cho bạn về AI?"
+                        conversationId: "conv-550e8400-e29b-41d4-a716-446655440000"
+                        userId: "bot-id"
+                        isMe: false
+        '401':
+          description: Chưa xác thực hoặc token không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Không tìm thấy cuộc hội thoại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
 components:
   schemas:
@@ -378,6 +722,74 @@ components:
           example: "securePassword123"
           minLength: 6
 
+    UserUpdationRequest:
+      type: object
+      properties:
+        password:
+          type: string
+          description: Mật khẩu mới (nếu muốn thay đổi)
+          format: password
+          example: "newPassword123"
+          minLength: 6
+        firstName:
+          type: string
+          description: Tên
+          example: "John"
+        lastName:
+          type: string
+          description: Họ
+          example: "Doe"
+        gender:
+          type: boolean
+          description: Giới tính (true = Nam, false = Nữ)
+          example: true
+        email:
+          type: string
+          format: email
+          description: Địa chỉ email
+          example: "john.doe@example.com"
+        phoneNumber:
+          type: string
+          description: Số điện thoại
+          example: "+84123456789"
+        birthday:
+          type: string
+          format: date
+          description: Ngày sinh (YYYY-MM-DD)
+          example: "1990-01-01"
+        preferences:
+          type: string
+          description: Tùy chọn cá nhân của người dùng
+          example: "Dark mode, Vietnamese"
+
+    ConversationRequest:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          description: Tiêu đề của cuộc hội thoại
+          example: "Cuộc hội thoại về AI"
+          minLength: 1
+          maxLength: 255
+
+    MessageRequest:
+      type: object
+      required:
+        - text
+        - conversationId
+      properties:
+        text:
+          type: string
+          description: Nội dung tin nhắn
+          example: "Xin chào, bạn có thể giúp tôi về AI không?"
+          minLength: 1
+        conversationId:
+          type: string
+          description: ID của cuộc hội thoại chứa tin nhắn này
+          example: "conv-550e8400-e29b-41d4-a716-446655440000"
+
     ApiResponse:
       type: object
       properties:
@@ -429,6 +841,83 @@ components:
           type: string
           description: Mật khẩu đã được mã hóa (BCrypt)
           example: "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy"
+        firstName:
+          type: string
+          description: Tên
+          example: "John"
+        lastName:
+          type: string
+          description: Họ
+          example: "Doe"
+        gender:
+          type: boolean
+          description: Giới tính (true = Nam, false = Nữ)
+          example: true
+        email:
+          type: string
+          format: email
+          description: Địa chỉ email
+          example: "john.doe@example.com"
+        phoneNumber:
+          type: string
+          description: Số điện thoại
+          example: "+84123456789"
+        birthday:
+          type: string
+          format: date
+          description: Ngày sinh (YYYY-MM-DD)
+          example: "1990-01-01"
+        preferences:
+          type: string
+          description: Tùy chọn cá nhân của người dùng
+          example: "Dark mode, Vietnamese"
+
+    ConversationResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: ID duy nhất của cuộc hội thoại
+          example: "conv-550e8400-e29b-41d4-a716-446655440000"
+        title:
+          type: string
+          description: Tiêu đề của cuộc hội thoại
+          example: "Cuộc hội thoại về AI"
+        userId:
+          type: string
+          format: uuid
+          description: ID của người dùng sở hữu cuộc hội thoại
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        createdDate:
+          type: string
+          format: date-time
+          description: Thời gian tạo cuộc hội thoại (ISO 8601)
+          example: "2025-10-27T10:15:30Z"
+
+    MessageResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: ID duy nhất của tin nhắn
+          example: "msg-550e8400-e29b-41d4-a716-446655440000"
+        text:
+          type: string
+          description: Nội dung tin nhắn
+          example: "Xin chào, bạn có thể giúp tôi về AI không?"
+        conversationId:
+          type: string
+          description: ID của cuộc hội thoại chứa tin nhắn này
+          example: "conv-550e8400-e29b-41d4-a716-446655440000"
+        userId:
+          type: string
+          format: uuid
+          description: ID của người dùng gửi tin nhắn
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        isMe:
+          type: boolean
+          description: Tin nhắn có phải của người dùng hiện tại không
+          example: true
 
     ErrorResponse:
       type: object

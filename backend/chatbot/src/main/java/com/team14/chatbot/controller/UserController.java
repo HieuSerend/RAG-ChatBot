@@ -2,6 +2,7 @@ package com.team14.chatbot.controller;
 
 
 import com.team14.chatbot.dto.request.UserCreationRequest;
+import com.team14.chatbot.dto.request.UserUpdationRequest;
 import com.team14.chatbot.dto.response.ApiResponse;
 import com.team14.chatbot.dto.response.UserResponse;
 import com.team14.chatbot.exception.AppException;
@@ -34,6 +35,11 @@ public class UserController {
     public ApiResponse<UserResponse> getMyInfo () throws AppException {
         return ApiResponse.<UserResponse>builder()
                 .data(userService.getMyInfo()).build();
+    }
+
+    @PutMapping("/update-my-info")
+    public ApiResponse<UserResponse> updateMyInfo (@RequestBody UserUpdationRequest request) throws AppException {
+        return ApiResponse.<UserResponse>builder().data(userService.updateMyProfile(request)).build();
     }
 
 }
