@@ -20,7 +20,7 @@ public class GlobalException {
     public ResponseEntity<ApiResponse> HandlingRuntimeException (Exception e){
         ErrorCode errorCode = ErrorCode.UNCATEGORIZED;
         return ResponseEntity.status(errorCode.getHttpStatusCode())
-                .body(ApiResponse.builder().code(errorCode.getCode()).message(errorCode.getMessage()).build());
+                .body(ApiResponse.builder().code(errorCode.getCode()).message(e.getMessage()).build());
     }
 
 
