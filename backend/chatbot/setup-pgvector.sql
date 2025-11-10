@@ -1,18 +1,32 @@
 CREATE EXTENSION IF NOT EXISTS vector;
 
-CREATE TABLE IF NOT EXISTS vector_store (
+CREATE TABLE IF NOT EXISTS kb_embeddings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     content TEXT NOT NULL,
     metadata JSON,
-    embedding vector(1536) NOT NULL,
+    embedding vector(768) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS vector_store_embedding_idx
-ON vector_store USING hnsw (embedding vector_cosine_ops);
+CREATE INDEX IF NOT EXISTS kb_embeddings_idx
+ON kb_embeddings USING hnsw (embedding vector_cosine_ops);
 
-CREATE INDEX IF NOT EXISTS vector_store_metadata_idx
-ON vector_store USING gin (metadata);
+CREATE INDEX IF NOT EXISTS kb_embeddings_metadata_idx
+ON kb_embeddings USING gin (metadata);
+
+CREATE TABLE IF NOT EXISTS chat_memory_embeddings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    content TEXT NOT NULL,
+    metadata JSON,
+    embedding vector(768) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS chat_memory_embedding_idx
+ON chat_memory_embeddings USING hnsw (embedding vector_cosine_ops);
+
+CREATE INDEX IF NOT EXISTS chat_memory_metadata_idx
+ON chat_memory_embeddings USING gin (metadata);
 
 SELECT
     'pgvector extension installed' as status,
@@ -22,4 +36,5 @@ WHERE extname = 'vector';
 
 \d vector_store
 
-SELECT COUNT(*) as total_embeddings FROM vector_store;
+SELECT COUNT(*) as total_kb_embeddings FROM chat_memory_embeddings;
+SELECT COUNT(*) as total_chat_memory_embeddings FROM chat_memory_embeddings;

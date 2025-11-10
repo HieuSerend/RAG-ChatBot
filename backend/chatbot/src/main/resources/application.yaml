@@ -36,10 +36,7 @@ spring:
       pgvector:
         index-type: HNSW
         distance-type: COSINE_DISTANCE
-        dimensions: 1536
-        initialize-schema: true
-        schema-name: public
-        table-name: documents
+        dimensions: 768
 
 
 

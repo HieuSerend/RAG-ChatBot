@@ -7,6 +7,8 @@ import jakarta.persistence.Id;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.time.LocalDateTime;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -16,6 +18,8 @@ public class MessageResponse {
     String id;
     String text;
     String conversationId;
-    String userId;
-    boolean isMe;
+    String role;
+    LocalDateTime createdAt;
+//    String userId;
+//    boolean isMe;
 }

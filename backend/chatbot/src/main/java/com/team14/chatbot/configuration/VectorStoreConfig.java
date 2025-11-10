@@ -1,0 +1,35 @@
+package com.team14.chatbot.configuration;
+
+import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.ai.vectorstore.pgvector.PgVectorStore;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.core.JdbcTemplate;
+
+@Configuration
+public class VectorStoreConfig {
+
+    @Bean
+    @Qualifier("knowledgeBaseVectorStore")
+    public VectorStore knowledgeBaseVectorStore(JdbcTemplate jdbcTemplate, EmbeddingModel embeddingModel) {
+        return PgVectorStore.builder(jdbcTemplate, embeddingModel) // Builder có tham số
+                .vectorTableName("kb_embeddings") // <-- BẮT BUỘC PHẢI THÊM
+                .dimensions(768)
+                .distanceType(PgVectorStore.PgDistanceType.COSINE_DISTANCE)
+                .indexType(PgVectorStore.PgIndexType.HNSW)
+                .build();
+    }
+
+    @Bean
+    @Qualifier("chatMemoryVectorStore")
+    public VectorStore chatMemoryVectorStore(JdbcTemplate jdbcTemplate, EmbeddingModel embeddingModel) {
+        return PgVectorStore.builder(jdbcTemplate, embeddingModel) // Builder có tham số
+                .vectorTableName("chat_memory_embeddings") // <-- BẮT BUỘC PHẢI THÊM
+                .dimensions(768)
+                .distanceType(PgVectorStore.PgDistanceType.COSINE_DISTANCE)
+                .indexType(PgVectorStore.PgIndexType.HNSW)
+                .build();
+    }
+}
