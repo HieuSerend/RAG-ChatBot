@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: 8081
 spring:
   application:
     name: chatbot
@@ -37,10 +37,6 @@ spring:
         index-type: HNSW
         distance-type: COSINE_DISTANCE
         dimensions: 768
-        initialize-schema: true
-        schema-name: public
-        table-name: documents
-
 
 
 
