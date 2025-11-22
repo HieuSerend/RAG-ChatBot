@@ -3,6 +3,7 @@ package com.team14.chatbot.controller;
 import com.team14.chatbot.dto.request.ConversationRequest;
 import com.team14.chatbot.dto.response.ApiResponse;
 import com.team14.chatbot.dto.response.ConversationResponse;
+import com.team14.chatbot.dto.response.PageResponse;
 import com.team14.chatbot.exception.AppException;
 import com.team14.chatbot.service.ConversationService;
 import lombok.AccessLevel;
@@ -27,8 +28,12 @@ public class ConversationController {
     }
 
     @GetMapping("/list")
-    public ApiResponse<List<ConversationResponse>> findAll (){
-        return ApiResponse.<List<ConversationResponse>>builder().data(conversationService.findAll()).build();
+    public ApiResponse<PageResponse<ConversationResponse>> findAllByUserId (
+            @RequestParam(value = "page", required = false, defaultValue = "1") int page,
+            @RequestParam(value = "size", required = false, defaultValue = "10") int size
+    ){
+        return ApiResponse.<PageResponse<ConversationResponse>>builder()
+                .data(conversationService.findAllByUserId(page, size)).build();
     }
 
     @DeleteMapping("/delete/{id}")

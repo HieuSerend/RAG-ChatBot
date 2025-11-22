@@ -2,6 +2,7 @@ package com.team14.chatbot.service;
 
 import com.team14.chatbot.dto.request.ConversationRequest;
 import com.team14.chatbot.dto.response.ConversationResponse;
+import com.team14.chatbot.dto.response.PageResponse;
 import com.team14.chatbot.entity.Conversation;
 import com.team14.chatbot.entity.User;
 import com.team14.chatbot.exception.AppException;
@@ -12,6 +13,10 @@ import com.team14.chatbot.repository.UserRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -35,8 +40,20 @@ public class ConversationService {
         return conversationMapper.toConversationResponse(conversationRepository.save(conversation));
     }
 
-    public List<ConversationResponse> findAll (){
-        return conversationRepository.findAll().stream().map(conversationMapper::toConversationResponse).toList();
+    public PageResponse<ConversationResponse> findAllByUserId(int page, int size){
+        Sort sort = Sort.by("createdDate").descending();
+        Pageable pageable = PageRequest.of(page - 1, size, sort);
+        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
+        Page<Conversation> conversationPage = conversationRepository.findAllByUserId(userId, pageable);
+        var conversationData = conversationPage.getContent().stream().map(conversationMapper::toConversationResponse).toList();
+        return PageResponse.<ConversationResponse>builder()
+                .currentPage(page)
+                .totalPages(conversationPage.getTotalPages())
+                .totalElements(conversationPage.getTotalElements())
+                .pageSize(conversationPage.getSize())
+                .result(conversationData)
+                .hasNextPage(conversationPage.hasNext())
+                .hasPreviousPage(conversationPage.hasPrevious()).build();
     }
 
     public void delete (String id){
