@@ -31,7 +31,7 @@ public class ConversationController {
     public ApiResponse<PageResponse<ConversationResponse>> findAllByUserId (
             @RequestParam(value = "page", required = false, defaultValue = "1") int page,
             @RequestParam(value = "size", required = false, defaultValue = "10") int size
-    ){
+    ) throws AppException {
         return ApiResponse.<PageResponse<ConversationResponse>>builder()
                 .data(conversationService.findAllByUserId(page, size)).build();
     }
