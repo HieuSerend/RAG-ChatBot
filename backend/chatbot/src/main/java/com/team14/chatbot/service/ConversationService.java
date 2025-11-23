@@ -40,11 +40,12 @@ public class ConversationService {
         return conversationMapper.toConversationResponse(conversationRepository.save(conversation));
     }
 
-    public PageResponse<ConversationResponse> findAllByUserId(int page, int size){
+    public PageResponse<ConversationResponse> findAllByUserId(int page, int size) throws AppException {
         Sort sort = Sort.by("createdDate").descending();
         Pageable pageable = PageRequest.of(page - 1, size, sort);
-        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
-        Page<Conversation> conversationPage = conversationRepository.findAllByUserId(userId, pageable);
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByUsername(username).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        Page<Conversation> conversationPage = conversationRepository.findAllByUserId(user.getId(), pageable);
         var conversationData = conversationPage.getContent().stream().map(conversationMapper::toConversationResponse).toList();
         return PageResponse.<ConversationResponse>builder()
                 .currentPage(page)
