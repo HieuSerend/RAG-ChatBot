@@ -448,10 +448,30 @@ paths:
       tags:
         - Conversation
       summary: Lấy danh sách cuộc hội thoại
-      description: Lấy tất cả cuộc hội thoại của người dùng hiện tại (yêu cầu xác thực)
+      description: Lấy danh sách cuộc hội thoại của người dùng hiện tại với phân trang (yêu cầu xác thực)
       operationId: listConversations
       security:
         - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          description: Số trang (bắt đầu từ 1)
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+          example: 1
+        - name: size
+          in: query
+          required: false
+          description: Số lượng cuộc hội thoại trên mỗi trang
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+          example: 10
       responses:
         '200':
           description: Lấy danh sách thành công
@@ -463,24 +483,27 @@ paths:
                   - type: object
                     properties:
                       data:
-                        type: array
-                        items:
-                          $ref: '#/components/schemas/ConversationResponse'
+                        $ref: '#/components/schemas/PageResponse'
               examples:
                 success:
-                  summary: Danh sách cuộc hội thoại
+                  summary: Danh sách cuộc hội thoại với phân trang
                   value:
                     code: 1000
                     message: "Success!"
                     data:
-                      - id: "conv-1"
-                        title: "Cuộc hội thoại về AI"
-                        userId: "550e8400-e29b-41d4-a716-446655440000"
-                        createdDate: "2025-10-27T10:15:30Z"
-                      - id: "conv-2"
-                        title: "Hỏi về lập trình"
-                        userId: "550e8400-e29b-41d4-a716-446655440000"
-                        createdDate: "2025-10-27T09:00:00Z"
+                      currentPage: 1
+                      pageSize: 10
+                      totalPages: 3
+                      totalElements: 25
+                      data:
+                        - id: "conv-1"
+                          title: "Cuộc hội thoại về AI"
+                          userId: "550e8400-e29b-41d4-a716-446655440000"
+                          createdDate: "2025-10-27T10:15:30Z"
+                        - id: "conv-2"
+                          title: "Hỏi về lập trình"
+                          userId: "550e8400-e29b-41d4-a716-446655440000"
+                          createdDate: "2025-10-27T09:00:00Z"
         '401':
           description: Chưa xác thực hoặc token không hợp lệ
           content:
@@ -538,12 +561,55 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /message/stream-create:
+    post:
+      tags:
+        - Message
+      summary: Tạo tin nhắn mới với streaming response
+      description: Tạo một tin nhắn mới trong cuộc hội thoại và nhận phản hồi theo dạng streaming (Server-Sent Events)
+      operationId: streamCreateMessage
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageRequest'
+            examples:
+              validMessage:
+                summary: Tạo tin nhắn hợp lệ
+                value:
+                  text: "Xin chào, bạn có thể giúp tôi về AI không?"
+                  conversationId: "conv-550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: Streaming phản hồi thành công
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: Server-Sent Events stream với nội dung phản hồi
+              example: "data: Xin\n\ndata: chào\n\ndata: !\n\n"
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Chưa xác thực hoặc token không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /message/create:
     post:
       tags:
         - Message
       summary: Tạo tin nhắn mới
-      description: Tạo một tin nhắn mới trong cuộc hội thoại (yêu cầu xác thực)
+      description: Tạo một tin nhắn mới trong cuộc hội thoại và nhận phản hồi đầy đủ (yêu cầu xác thực)
       operationId: createMessage
       security:
         - bearerAuth: []
@@ -596,23 +662,42 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /message/list/{conversationId}:
+  /message/list:
     get:
       tags:
         - Message
       summary: Lấy danh sách tin nhắn
-      description: Lấy tất cả tin nhắn trong một cuộc hội thoại (yêu cầu xác thực)
+      description: Lấy danh sách tin nhắn trong một cuộc hội thoại với phân trang (yêu cầu xác thực)
       operationId: listMessages
       security:
         - bearerAuth: []
       parameters:
         - name: conversationId
-          in: path
+          in: query
           required: true
           description: ID của cuộc hội thoại
           schema:
             type: string
           example: "conv-550e8400-e29b-41d4-a716-446655440000"
+        - name: page
+          in: query
+          required: false
+          description: Số trang (bắt đầu từ 1)
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+          example: 1
+        - name: size
+          in: query
+          required: false
+          description: Số lượng tin nhắn trên mỗi trang
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+          example: 10
       responses:
         '200':
           description: Lấy danh sách tin nhắn thành công
@@ -624,26 +709,29 @@ paths:
                   - type: object
                     properties:
                       data:
-                        type: array
-                        items:
-                          $ref: '#/components/schemas/MessageResponse'
+                        $ref: '#/components/schemas/PageResponse'
               examples:
                 success:
-                  summary: Danh sách tin nhắn
+                  summary: Danh sách tin nhắn với phân trang
                   value:
                     code: 1000
                     message: "Success!"
                     data:
-                      - id: "msg-1"
-                        text: "Xin chào, bạn có thể giúp tôi về AI không?"
-                        conversationId: "conv-550e8400-e29b-41d4-a716-446655440000"
-                        userId: "550e8400-e29b-41d4-a716-446655440000"
-                        isMe: true
-                      - id: "msg-2"
-                        text: "Chào bạn! Tôi có thể giúp gì cho bạn về AI?"
-                        conversationId: "conv-550e8400-e29b-41d4-a716-446655440000"
-                        userId: "bot-id"
-                        isMe: false
+                      currentPage: 1
+                      pageSize: 10
+                      totalPages: 2
+                      totalElements: 15
+                      data:
+                        - id: "msg-1"
+                          text: "Xin chào, bạn có thể giúp tôi về AI không?"
+                          conversationId: "conv-550e8400-e29b-41d4-a716-446655440000"
+                          userId: "550e8400-e29b-41d4-a716-446655440000"
+                          isMe: true
+                        - id: "msg-2"
+                          text: "Chào bạn! Tôi có thể giúp gì cho bạn về AI?"
+                          conversationId: "conv-550e8400-e29b-41d4-a716-446655440000"
+                          userId: "bot-id"
+                          isMe: false
         '401':
           description: Chưa xác thực hoặc token không hợp lệ
           content:
@@ -918,6 +1006,32 @@ components:
           type: boolean
           description: Tin nhắn có phải của người dùng hiện tại không
           example: true
+
+    PageResponse:
+      type: object
+      properties:
+        currentPage:
+          type: integer
+          description: Trang hiện tại (bắt đầu từ 1)
+          example: 1
+        pageSize:
+          type: integer
+          description: Số lượng phần tử trên mỗi trang
+          example: 10
+        totalPages:
+          type: integer
+          description: Tổng số trang
+          example: 5
+        totalElements:
+          type: integer
+          format: int64
+          description: Tổng số phần tử
+          example: 50
+        data:
+          type: array
+          description: Dữ liệu của trang hiện tại
+          items:
+            type: object
 
     ErrorResponse:
       type: object

@@ -3,6 +3,7 @@ package com.team14.chatbot.controller;
 import com.team14.chatbot.dto.request.MessageRequest;
 import com.team14.chatbot.dto.response.ApiResponse;
 import com.team14.chatbot.dto.response.MessageResponse;
+import com.team14.chatbot.dto.response.PageResponse;
 import com.team14.chatbot.exception.AppException;
 import com.team14.chatbot.service.MessageService;
 import lombok.AccessLevel;
@@ -36,8 +37,11 @@ public class MessageController {
         return ApiResponse.<MessageResponse>builder().data(messageService.create(request)).build();
     }
 
-    @GetMapping("/list/{conversationId}")
-    public ApiResponse<List<MessageResponse>> findAll (@PathVariable("conversationId") String conversationId){
-        return ApiResponse.<List<MessageResponse>>builder().data(messageService.findAll(conversationId)).build();
+    @GetMapping("/list")
+    public ApiResponse<PageResponse<MessageResponse>> findAll (
+            @RequestParam(value = "page", required = false, defaultValue = "1") int page,
+            @RequestParam(value = "size", required = false, defaultValue = "10") int size,
+            @RequestParam(value = "conversationId") String conversationId){
+        return ApiResponse.<PageResponse<MessageResponse>>builder().data(messageService.findAll(conversationId, page, size)).build();
     }
 }
