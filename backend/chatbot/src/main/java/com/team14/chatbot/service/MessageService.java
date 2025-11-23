@@ -139,7 +139,7 @@ public class MessageService {
 
 
     public PageResponse<MessageResponse> findAll (String conversationId, int page, int size){
-        Sort sort = Sort.by("createdDate").descending();
+        Sort sort = Sort.by("createdAt").descending();
         Pageable pageable = PageRequest.of(page - 1, size, sort);
         Page<Message> messagePage = messageRepository.findAllByConversationId(conversationId, pageable);
         var messageData = messagePage.getContent().stream().map(

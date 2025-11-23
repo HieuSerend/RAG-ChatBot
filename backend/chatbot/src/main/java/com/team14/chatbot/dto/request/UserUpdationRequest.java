@@ -15,7 +15,7 @@ public class UserUpdationRequest {
     String password;
     String firstName;
     String lastName;
-    boolean gender;
+    String gender;
     String email;
     String phoneNumber;
     LocalDate birthday;
