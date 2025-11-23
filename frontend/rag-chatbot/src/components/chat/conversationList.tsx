@@ -1,4 +1,4 @@
-import type { Conversation } from "../../types/conversation";
+import type { ConversationResponse as Conversation } from "../../types/api";
 
 interface ConversationListProps {
   conversations: Conversation[];

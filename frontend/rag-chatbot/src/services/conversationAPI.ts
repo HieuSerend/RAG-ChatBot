@@ -1,14 +1,12 @@
 import api from "./api";
-import type { PageResponse, ConversationResponse } from "../types/api"; // Assuming these types exist or will be created
-import type { Conversation } from "../types/conversation";
+import type { PageResponse, ConversationResponse } from "../types/api";
 
 export const createConversation = async (
-
   title: string,
-
-): Promise<Conversation> => {
-
+): Promise<ConversationResponse> => {
   const response = await api.post("/conversation/create", { title });
+  return response.data.data;
+};
 
 export const getConversations = async (
   page: number = 1,
@@ -23,14 +21,6 @@ export const getConversations = async (
     console.error("Error fetching conversations:", error);
     throw error;
   }
-  return response.data.data;
-
-};
-
-export const getConversations = async (): Promise<Conversation[]> => {
-  const response = await api.get("/conversation/list");
-  console.log(response);
-  return response.data.data;
 };
 
 // Mock function to generate title from text
@@ -41,5 +31,6 @@ export const generateTitleFromText = async (text: string): Promise<string> => {
   const title = words.slice(0, 4).join(" ");
   return words.length > 4 ? `${title}...` : title;
 };
+
 
 

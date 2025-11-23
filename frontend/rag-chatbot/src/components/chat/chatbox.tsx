@@ -10,13 +10,13 @@ import {
   generateTitleFromText,
 } from "../../services/conversationAPI";
 import type { Message } from "../../types/message";
-import type { Conversation } from "../../types/conversation";
+import type { ConversationResponse } from "../../types/api";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 interface ChatBoxProps {
   conversationId: string | null;
-  onConversationCreated?: (newConversation: Conversation) => void;
+  onConversationCreated?: (newConversation: ConversationResponse) => void;
 }
 
 export default function ChatBox({

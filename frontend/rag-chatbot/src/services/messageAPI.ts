@@ -4,9 +4,17 @@ import { getAccessToken } from "./authService";
 
 export const getMessages = async (
   conversationId: string,
+  page = 1,
+  size = 10,
 ): Promise<Message[]> => {
-  const response = await api.get(`/message/list/${conversationId}`);
-  return response.data.data;
+  const response = await api.get(`/message/list`, {
+    params: {
+      conversationId,
+      page,
+      size,
+    },
+  });
+  return response.data.data.result;
 };
 
 export const streamMessage = async (
@@ -39,7 +47,10 @@ export const streamMessage = async (
       if (done) {
         break;
       }
-      buffer += decoder.decode(value, { stream: true });
+      console.log("Raw stream data:", value);
+      const decodedValue = decoder.decode(value, { stream: true });
+      console.log("Decoded stream data:", decodedValue);
+      buffer += decodedValue;
 
       const lines = buffer.split("\n");
       buffer = lines.pop() || ""; // Keep the last partial line in the buffer

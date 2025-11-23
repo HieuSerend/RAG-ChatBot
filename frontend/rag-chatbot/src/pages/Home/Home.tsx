@@ -8,7 +8,7 @@ import {
 } from "@heroicons/react/24/solid";
 import { useEffect, useState, useCallback } from "react";
 import { getConversations } from "../../services/conversationAPI";
-import type { Conversation } from "../../types/conversation";
+import type { ConversationResponse as Conversation } from "../../types/api";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -19,7 +19,7 @@ export default function Home() {
 
   const loadConversations = useCallback(async () => {
     try {
-      const convs = await getConversations();
+      const convs = (await getConversations()).result;
       const sortedConvs = convs.sort(
         (a, b) =>
           new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime(),
