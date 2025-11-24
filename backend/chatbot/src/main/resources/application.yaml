@@ -37,13 +37,10 @@ spring:
         index-type: HNSW
         distance-type: COSINE_DISTANCE
         dimensions: 768
-#        initialize-schema: true
-#        schema-name: public
-#        table-name: embedded_documents
 
 
 
 jwt:
   signerKey : "4vCM6CA5NXhXhG+LjHY+PfQRZYGjm13cHoNxVPuDyEYz2XB5SO/8Ko2vCxBkqHeT"
   access-token-time : 2000
-  refresh-token-time : 1000m0
+  refresh-token-time : 10000
