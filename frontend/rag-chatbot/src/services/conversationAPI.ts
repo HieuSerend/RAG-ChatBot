@@ -23,14 +23,8 @@ export const getConversations = async (
   }
 };
 
-// Mock function to generate title from text
 export const generateTitleFromText = async (text: string): Promise<string> => {
-  // In a real scenario, this would be a call to a generative AI endpoint.
-  // For now, we'll just take the first few words.
   const words = text.split(" ");
   const title = words.slice(0, 4).join(" ");
   return words.length > 4 ? `${title}...` : title;
 };
-
-
-

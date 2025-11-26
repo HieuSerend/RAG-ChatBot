@@ -9,6 +9,7 @@ import {
 import { useEffect, useState, useCallback } from "react";
 import { getConversations } from "../../services/conversationAPI";
 import type { ConversationResponse as Conversation } from "../../types/api";
+import SearchModal from "../../components/chat/SearchModal";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ export default function Home() {
   const [activeConversationId, setActiveConversationId] = useState<
     string | null
   >(null);
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
 
   const loadConversations = useCallback(async () => {
     try {
@@ -26,7 +28,6 @@ export default function Home() {
       );
       setConversations(sortedConvs);
       if (sortedConvs.length > 0) {
-        // Set active conversation only if one isn't already active
         setActiveConversationId((prevId) => prevId ?? sortedConvs[0].id);
       }
     } catch (error) {
@@ -49,8 +50,13 @@ export default function Home() {
 
   return (
     <div>
+      <SearchModal
+        isOpen={isSearchModalOpen}
+        onClose={() => setIsSearchModalOpen(false)}
+        conversations={conversations}
+        setActiveConversationId={setActiveConversationId}
+      />
       <div className="flex h-screen">
-        {/* Left sidebar */}
         <aside className="w-64 bg-gray-100 p-4 border-r border-black/10 flex flex-col">
           <div>
             <div className="mb-6">
@@ -68,7 +74,10 @@ export default function Home() {
                 />
                 <span>New chat</span>
               </button>
-              <button className="flex items-center w-full text-left px-3 py-2 rounded hover:bg-gray-300">
+              <button
+                onClick={() => setIsSearchModalOpen(true)}
+                className="flex items-center w-full text-left px-3 py-2 rounded hover:bg-gray-300"
+              >
                 <MagnifyingGlassIcon
                   className="w-5 h-5 mr-2 text-black"
                   aria-hidden="true"
@@ -78,7 +87,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Middle: conversation list scrollable */}
           <div className="flex-1 overflow-auto mt-4 px-1">
             <ConversationList
               conversations={conversations}
@@ -101,7 +109,6 @@ export default function Home() {
           </div>
         </aside>
 
-        {/* Center content */}
         <main className="flex-1 bg-white py-4 px-40">
           <ChatBox
             conversationId={activeConversationId}

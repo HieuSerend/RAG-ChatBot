@@ -133,7 +133,6 @@ export default function Profile() {
             <span>Back to Home</span>
           </button>
         </div>
-        {/* Header */}
         <div className="mb-8">
           <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg shadow-lg p-8 text-white">
             <h1 className="text-3xl font-bold text-balance">
@@ -182,7 +181,6 @@ export default function Profile() {
           </div>
         ) : (
           <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-            {/* Card Header with Toggle Button */}
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
               <h2 className="text-xl font-semibold text-gray-900">
                 Personal Information
@@ -206,7 +204,6 @@ export default function Profile() {
 
             <div className="p-6">
               {isEditing ? (
-                // Edit Form
                 <form
                   className="space-y-6"
                   onSubmit={(e) => {
@@ -214,9 +211,7 @@ export default function Profile() {
                     handleSave();
                   }}
                 >
-                  {/* Name Row */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    {/* First Name */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         First Name
@@ -345,7 +340,6 @@ export default function Profile() {
                     </div>
                   </div>
 
-                  {/* Birthday */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Birthday
@@ -400,7 +394,6 @@ export default function Profile() {
                     />
                   </div>
 
-                  {/* Action Buttons */}
                   <div className="flex gap-4 pt-4">
                     <button
                       type="submit"

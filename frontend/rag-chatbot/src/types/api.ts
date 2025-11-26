@@ -8,7 +8,7 @@ export interface ConversationResponse {
   id: string;
   title: string;
   userId: string;
-  createdDate: string; // Using string for Instant, will be parsed as ISO date string
+  createdDate: string;
 }
 
 export interface PageResponse<T> {

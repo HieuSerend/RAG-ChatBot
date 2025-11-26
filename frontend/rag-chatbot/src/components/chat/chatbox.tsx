@@ -48,7 +48,6 @@ export default function ChatBox({
       };
       loadMessages();
     } else {
-      // Clear messages when there's no active conversation
       setMessages([]);
     }
   }, [conversationId]);
@@ -121,7 +120,6 @@ export default function ChatBox({
 
     let currentConversationId = conversationId;
 
-    // If there is no active conversation, create one first.
     if (!currentConversationId) {
       try {
         const newTitle = await generateTitleFromText(currentInput);
@@ -131,15 +129,13 @@ export default function ChatBox({
       } catch (error) {
         console.error("Failed to create new conversation:", error);
         setIsLoading(false);
-        // Optionally, inform the user that creation failed
         alert("Error: Could not start a new conversation. Please try again.");
-        setInput(currentInput); // Restore user input
+        setInput(currentInput);
         return;
       }
     }
 
     if (!currentConversationId) {
-      // This should not happen if creation is successful, but as a safeguard:
       console.error("Conversation ID is still null after creation attempt.");
       setIsLoading(false);
       return;
@@ -188,7 +184,6 @@ export default function ChatBox({
 
   return (
     <div className="flex flex-col h-full bg-white relative">
-      {/* Messages Container */}
       <div
         ref={messagesContainerRef}
         className="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth hide-scrollbar pb-32"
@@ -242,7 +237,6 @@ export default function ChatBox({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Floating Input Container */}
       <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-white via-white/80 to-transparent">
         <div className="w-full mx-auto">
           {selectedFile && (
