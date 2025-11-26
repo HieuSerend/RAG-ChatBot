@@ -2,6 +2,7 @@ package com.team14.chatbot.service;
 
 import com.team14.chatbot.dto.request.MessageRequest;
 import com.team14.chatbot.dto.response.MessageResponse;
+import com.team14.chatbot.dto.response.PageResponse;
 import com.team14.chatbot.entity.Conversation;
 import com.team14.chatbot.entity.Message;
 import com.team14.chatbot.entity.User;
@@ -22,6 +23,10 @@ import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.messages.*;
 import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -133,16 +138,25 @@ public class MessageService {
 
 
 
-    public List<MessageResponse> findAll (String conversationId){
-        return messageRepository.findAllByConversationId(conversationId)
-                .stream().map(message -> MessageResponse.builder()
-                                .id(message.getId())
-                                .text(message.getText())
-                                .role(message.getRole())
-                                .createdAt(message.getCreatedAt())
-                        .conversationId(message.getConversationId())
-                        .build())
-                .toList();
+    public PageResponse<MessageResponse> findAll (String conversationId, int page, int size){
+        Sort sort = Sort.by("createdAt").descending();
+        Pageable pageable = PageRequest.of(page - 1, size, sort);
+        Page<Message> messagePage = messageRepository.findAllByConversationId(conversationId, pageable);
+        var messageData = messagePage.getContent().stream().map(
+                message -> MessageResponse.builder()
+                        .id(message.getId())
+                        .text(message.getText())
+                        .role(message.getRole())
+                        .createdAt(message.getCreatedAt())
+                        .conversationId(message.getConversationId()).build()).toList();
+        return PageResponse.<MessageResponse>builder()
+                .currentPage(page)
+                .pageSize(messagePage.getSize())
+                .totalPages(messagePage.getTotalPages())
+                .totalElements(messagePage.getTotalElements())
+                .hasPreviousPage(messagePage.hasPrevious())
+                .hasNextPage(messagePage.hasNext())
+                .result(messageData).build();
     }
 
     private MessageResponse toMessageResponse (Message message) throws AppException {
