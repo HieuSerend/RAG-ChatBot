@@ -7,11 +7,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.document.DocumentReader;
-import org.springframework.ai.embedding.Embedding;
 import org.springframework.ai.reader.pdf.PagePdfDocumentReader;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.VectorStore;
-import org.springframework.core.io.Resource;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -31,6 +30,8 @@ import java.util.UUID;
 public class DocumentService {
 
     DocumentRepository documentRepository;
+    
+    @Qualifier("knowledgeBaseVectorStore")
     VectorStore vectorStore;
 
     private static final String UPLOAD_DIR = "uploads/documents";

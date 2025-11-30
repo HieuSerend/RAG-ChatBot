@@ -26,15 +26,18 @@ public class ChatService {
     private final ChatClient chatClient;
     private final VectorStore knowledgeBaseStore;
     private final HybridChatMemoryRepository hybridChatMemoryRepository;
+    private final QueryRetrievalService queryRetrievalService;
 
     @Autowired
     public ChatService(
             @Qualifier("knowledgeBaseVectorStore") VectorStore knowledgeBaseStore,
             ChatClient chatClient,
-            HybridChatMemoryRepository hybridChatMemoryRepository) {
+            HybridChatMemoryRepository hybridChatMemoryRepository,
+            QueryRetrievalService queryRetrievalService) {
         this.knowledgeBaseStore = knowledgeBaseStore;
         this.chatClient = chatClient;
         this.hybridChatMemoryRepository = hybridChatMemoryRepository;
+        this.queryRetrievalService = queryRetrievalService;
     }
 
     private static final int K_TOKENS = 3;
@@ -92,13 +95,24 @@ public class ChatService {
     }
 
     public Prompt generatePrompt(UserMessage userMessage, String conversationId) {
-        List<Document> similarDocuments = knowledgeBaseStore.
-                similaritySearch(SearchRequest.builder()
-                        .query(userMessage.getText())
-                        .topK(K_TOKENS)
-                        .build());
+        // Use QueryRetrievalService for advanced retrieval pipeline
+        com.team14.chatbot.dto.response.RetrievalResponse retrievalResponse = 
+                queryRetrievalService.retrieveWithCrag(userMessage.getText());
+        
+        List<Document> similarDocuments = retrievalResponse.getDocuments();
+        
+        // Handle CRAG evaluation result
+        if (retrievalResponse.getCragEvaluation() != null) {
+            com.team14.chatbot.dto.response.CragEvaluation crag = retrievalResponse.getCragEvaluation();
+            System.out.println(">>> CRAG Evaluation: " + crag.getQuality() + " - " + crag.getAction());
+            
+            // If CRAG says documents are BAD, we might want to handle differently
+            if (crag.getQuality() == com.team14.chatbot.dto.response.CragEvaluation.DocumentQuality.BAD) {
+                System.out.println(">>> CRAG determined documents are BAD, using LLM knowledge only");
+            }
+        }
 
-        System.out.println(">>> Similar documents: " + similarDocuments);
+        System.out.println(">>> Similar documents: " + similarDocuments.size());
 
         String knowledgeBaseContext = similarDocuments.stream()
                 .map(Document::getText)
