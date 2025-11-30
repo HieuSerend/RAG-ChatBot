@@ -1,36 +1,56 @@
 "use client";
 
 import type React from "react";
-
 import { useState, useRef, useEffect } from "react";
 import { Send, Upload } from "lucide-react";
+import { getMessages, streamMessage } from "../../services/messageAPI";
+import { uploadDocument } from "../../services/documentAPI";
+import {
+  createConversation,
+  generateTitleFromText,
+} from "../../services/conversationAPI";
+import type { Message } from "../../types/message";
+import type { ConversationResponse } from "../../types/api";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
-interface Message {
-  id: string;
-  text: string;
-  sender: "user" | "bot";
-  timestamp: Date;
-  file?: {
-    name: string;
-    size: number;
-  };
+interface ChatBoxProps {
+  conversationId: string | null;
+  onConversationCreated?: (newConversation: ConversationResponse) => void;
 }
 
-export default function ChatBox() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      text: "Xin chào! Tôi là DocuChat. Bạn có thể tải lên tài liệu và hỏi tôi bất cứ điều gì về nó.",
-      sender: "bot",
-      timestamp: new Date(),
-    },
-  ]);
+export default function ChatBox({
+  conversationId,
+  onConversationCreated,
+}: ChatBoxProps) {
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (conversationId) {
+      const loadMessages = async () => {
+        try {
+          setIsLoading(true);
+          const fetchedMessages = await getMessages(conversationId);
+          setMessages(fetchedMessages);
+        } catch (error) {
+          console.error("Failed to load messages", error);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      loadMessages();
+    } else {
+      setMessages([]);
+    }
+  }, [conversationId]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -40,56 +60,14 @@ export default function ChatBox() {
     scrollToBottom();
   }, [messages, isLoading]);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-    }
+  const adjustTextareaHeight = (element: HTMLTextAreaElement) => {
+    element.style.height = "auto";
+    element.style.height = `${Math.min(element.scrollHeight, 200)}px`;
   };
 
-  const handleSendMessage = async () => {
-    if (!input.trim() && !selectedFile) return;
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      text: input || (selectedFile ? `Đã tải lên: ${selectedFile.name}` : ""),
-      sender: "user",
-      timestamp: new Date(),
-      file: selectedFile
-        ? {
-            name: selectedFile.name,
-            size: selectedFile.size,
-          }
-        : undefined,
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    setInput("");
-    setSelectedFile(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-    setIsLoading(true);
-
-    setTimeout(() => {
-      const botMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: selectedFile
-          ? `Tôi đã nhận được file "${selectedFile.name}". Vui lòng cho tôi biết bạn muốn hỏi gì về tài liệu này.`
-          : "Tôi đã nhận được tin nhắn của bạn. Vui lòng tải lên tài liệu để tôi có thể giúp bạn.",
-        sender: "bot",
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, botMessage]);
-      setIsLoading(false);
-    }, 500);
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
+  const preprocessText = (text: string) => {
+    if (!text) return "";
+    return text.replace(/([.!?])\s*\*/g, "$1\n\n*");
   };
 
   const formatFileSize = (bytes: number) => {
@@ -100,40 +78,143 @@ export default function ChatBox() {
     return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
   };
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+    adjustTextareaHeight(e.target);
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size === 0) {
+      alert("⚠️ Cannot upload an empty file.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      alert("⚠️ File too large! Maximum limit is 10MB.");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      await uploadDocument(file);
+      setSelectedFile(file);
+    } catch (error) {
+      console.error("Failed to upload document", error);
+      alert("⚠️ Failed to upload document.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!input.trim()) return;
+
+    const currentInput = input;
+    setInput("");
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
+
+    setIsLoading(true);
+
+    let currentConversationId = conversationId;
+
+    if (!currentConversationId) {
+      try {
+        const newTitle = await generateTitleFromText(currentInput);
+        const newConv = await createConversation(newTitle);
+        onConversationCreated?.(newConv);
+        currentConversationId = newConv.id;
+      } catch (error) {
+        console.error("Failed to create new conversation:", error);
+        setIsLoading(false);
+        alert("Error: Could not start a new conversation. Please try again.");
+        setInput(currentInput);
+        return;
+      }
+    }
+
+    if (!currentConversationId) {
+      console.error("Conversation ID is still null after creation attempt.");
+      setIsLoading(false);
+      return;
+    }
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      text: currentInput,
+      role: "USER",
+      createdAt: new Date().toISOString(),
+      conversationId: currentConversationId,
+    };
+    setMessages((prev) => [...prev, userMessage]);
+
+    const botMessagePlaceholder: Message = {
+      id: (Date.now() + 1).toString(),
+      text: "",
+      role: "ASSISTANT",
+      createdAt: new Date().toISOString(),
+      conversationId: currentConversationId,
+    };
+    setMessages((prev) => [...prev, botMessagePlaceholder]);
+
+    await streamMessage(
+      currentConversationId,
+      currentInput,
+      (chunk) => {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === botMessagePlaceholder.id
+              ? { ...msg, text: msg.text + chunk }
+              : msg,
+          ),
+        );
+      },
+      () => setIsLoading(false),
+    );
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
   return (
-    <div className="flex flex-col h-full bg-white rounded-lg shadow-sm border border-slate-200">
-      {/* Messages Container */}
+    <div className="flex flex-col h-full bg-white relative">
       <div
         ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth"
+        className="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth hide-scrollbar pb-32"
       >
         {messages.map((message) => (
           <div
             key={message.id}
-            className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}
+            className={`flex ${
+              message.role === "USER" ? "justify-end" : "justify-start"
+            }`}
           >
             <div
-              className={`max-w-xs px-4 py-2 rounded-lg ${
-                message.sender === "user"
-                  ? "bg-indigo-600 text-white rounded-br-none"
+              className={`prose max-w-3xl px-4 py-3 rounded-2xl leading-relaxed prose-p:my-3 overflow-x-hidden break-words shadow-sm ${
+                message.role === "USER"
+                  ? "bg-indigo-600 text-white rounded-br-none prose-headings:text-white prose-p:text-white prose-strong:text-white prose-li:text-white"
                   : "bg-slate-100 text-slate-900 rounded-bl-none"
               }`}
             >
-              <p className="text-sm">{message.text}</p>
-              {message.file && (
-                <div className="mt-2 pt-2 border-t border-current border-opacity-20">
-                  <p className="text-xs font-semibold">
-                    📎 {message.file.name}
-                  </p>
-                  <p className="text-xs opacity-75">
-                    {formatFileSize(message.file.size)}
-                  </p>
-                </div>
+              {message.role === "ASSISTANT" ? (
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {preprocessText(message.text)}
+                </ReactMarkdown>
+              ) : (
+                <p className="text-sm">{message.text}</p>
               )}
               <span
-                className={`text-xs mt-1 block ${message.sender === "user" ? "text-indigo-100" : "text-slate-500"}`}
+                className={`text-xs mt-2 block opacity-70 ${
+                  message.role === "USER" ? "text-indigo-100" : "text-slate-500"
+                }`}
               >
-                {message.timestamp.toLocaleTimeString("vi-VN", {
+                {new Date(message.createdAt).toLocaleTimeString("en-US", {
                   hour: "2-digit",
                   minute: "2-digit",
                 })}
@@ -141,9 +222,10 @@ export default function ChatBox() {
             </div>
           </div>
         ))}
+
         {isLoading && (
           <div className="flex justify-start">
-            <div className="bg-slate-100 text-slate-900 px-4 py-2 rounded-lg rounded-bl-none">
+            <div className="bg-slate-100 px-4 py-2 rounded-2xl rounded-bl-none shadow-sm">
               <div className="flex space-x-2">
                 <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"></div>
                 <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce delay-100"></div>
@@ -155,56 +237,65 @@ export default function ChatBox() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
-      <div className="border-t border-slate-200 p-4">
-        {selectedFile && (
-          <div className="mb-3 p-2 bg-indigo-50 rounded-lg flex items-center justify-between">
-            <span className="text-sm text-indigo-900">
-              📎 {selectedFile.name}
-            </span>
+      <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-white via-white/80 to-transparent">
+        <div className="w-full mx-auto">
+          {selectedFile && (
+            <div className="mb-2 p-2 bg-indigo-50 rounded-lg flex items-center justify-between text-sm">
+              <span className="text-indigo-900">
+                📎 {selectedFile.name} ({formatFileSize(selectedFile.size)})
+              </span>
+              <button
+                onClick={() => {
+                  setSelectedFile(null);
+                  if (fileInputRef.current) fileInputRef.current.value = "";
+                }}
+                className="text-indigo-600 hover:text-indigo-700 font-semibold"
+              >
+                Remove
+              </button>
+            </div>
+          )}
+
+          <div className="relative flex items-end w-full bg-white border border-slate-300 rounded-[26px] p-2 shadow-lg focus-within:ring-2 focus-within:ring-indigo-500 transition-all">
+            <input
+              ref={fileInputRef}
+              type="file"
+              onChange={handleFileSelect}
+              className="hidden"
+              accept=".pdf"
+            />
             <button
-              onClick={() => {
-                setSelectedFile(null);
-                if (fileInputRef.current) fileInputRef.current.value = "";
-              }}
-              className="text-indigo-600 hover:text-indigo-700 text-sm font-semibold"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isLoading}
+              className="text-slate-500 hover:text-indigo-600 p-2 rounded-full transition-colors mb-0.5"
+              title="Upload document"
             >
-              Xóa
+              <Upload size={20} />
+            </button>
+
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              placeholder="Type your message..."
+              rows={1}
+              className="flex-1 w-full bg-transparent outline-none border-none focus:ring-0 px-3 py-1.5 leading-tight text-slate-900 placeholder:text-slate-500 resize-none overflow-y-auto max-h-[150px] scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent"
+              disabled={isLoading}
+            />
+
+            <button
+              onClick={handleSendMessage}
+              disabled={isLoading || !input.trim()}
+              className={`p-2 rounded-full transition-colors mb-0.5 ${
+                input.trim()
+                  ? "bg-indigo-600 hover:bg-indigo-700 text-white"
+                  : "bg-slate-200 text-slate-400 cursor-not-allowed"
+              }`}
+            >
+              <Send size={20} />
             </button>
           </div>
-        )}
-        <div className="flex gap-2">
-          <input
-            ref={fileInputRef}
-            type="file"
-            onChange={handleFileSelect}
-            className="hidden"
-            accept=".pdf,.doc,.docx,.txt,.xlsx,.xls"
-          />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isLoading}
-            className="bg-slate-200 hover:bg-slate-300 disabled:bg-slate-100 text-slate-700 p-2 rounded-lg transition-colors"
-            title="Tải lên tài liệu"
-          >
-            <Upload size={20} />
-          </button>
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Nhập tin nhắn của bạn..."
-            className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            disabled={isLoading}
-          />
-          <button
-            onClick={handleSendMessage}
-            disabled={isLoading || (!input.trim() && !selectedFile)}
-            className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white p-2 rounded-lg transition-colors"
-          >
-            <Send size={20} />
-          </button>
         </div>
       </div>
     </div>
