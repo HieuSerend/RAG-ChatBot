@@ -7,11 +7,13 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.context.annotation.Primary;
 
 @Configuration
 public class VectorStoreConfig {
 
-    @Bean
+    @Bean(name = "knowledgeBaseVectorStore")
+    @Primary
     @Qualifier("knowledgeBaseVectorStore")
     public VectorStore knowledgeBaseVectorStore(JdbcTemplate jdbcTemplate, EmbeddingModel embeddingModel) {
         return PgVectorStore.builder(jdbcTemplate, embeddingModel) // Builder có tham số
@@ -19,10 +21,11 @@ public class VectorStoreConfig {
                 .dimensions(768)
                 .distanceType(PgVectorStore.PgDistanceType.COSINE_DISTANCE)
                 .indexType(PgVectorStore.PgIndexType.HNSW)
+                .initializeSchema(true)   // Tự động tạo table nếu chưa có
                 .build();
     }
 
-    @Bean
+    @Bean(name = "chatMemoryVectorStore")
     @Qualifier("chatMemoryVectorStore")
     public VectorStore chatMemoryVectorStore(JdbcTemplate jdbcTemplate, EmbeddingModel embeddingModel) {
         return PgVectorStore.builder(jdbcTemplate, embeddingModel) // Builder có tham số
@@ -30,6 +33,7 @@ public class VectorStoreConfig {
                 .dimensions(768)
                 .distanceType(PgVectorStore.PgDistanceType.COSINE_DISTANCE)
                 .indexType(PgVectorStore.PgIndexType.HNSW)
+                .initializeSchema(true)
                 .build();
     }
 }

@@ -24,6 +24,7 @@ public class RagService {
 
     private final ChatClient chatClient;
     private final VectorStore vectorStore;
+    private final QueryRetrievalService queryRetrievalService;
 
     private static final int K_TOKENS = 3;
 
@@ -46,13 +47,26 @@ public class RagService {
 
 
     public ChatResponse generateResponse(String userQuery) {
-        List<Document> similarDocuments = vectorStore.
-                similaritySearch(SearchRequest.builder()
-                        .query(userQuery)
-                        .topK(K_TOKENS)
-                        .build());
+        // Use QueryRetrievalService for advanced retrieval pipeline
+        com.team14.chatbot.dto.response.RetrievalResponse retrievalResponse = 
+                queryRetrievalService.retrieveWithCrag(userQuery);
+        
+        List<Document> similarDocuments = retrievalResponse.getDocuments();
+        
+        // Handle CRAG evaluation result
+        if (retrievalResponse.getCragEvaluation() != null) {
+            com.team14.chatbot.dto.response.CragEvaluation crag = retrievalResponse.getCragEvaluation();
+            System.out.println(">>> CRAG Evaluation: " + crag.getQuality() + " - " + crag.getAction());
+            
+            // If CRAG says documents are BAD, return message indicating no information found
+            if (crag.getQuality() == com.team14.chatbot.dto.response.CragEvaluation.DocumentQuality.BAD) {
+                return ChatResponse.builder()
+                        .answer("Tôi không tìm thấy thông tin liên quan đến câu hỏi của bạn trong cơ sở dữ liệu.")
+                        .build();
+            }
+        }
 
-        System.out.println(">>> Similar documents: " + similarDocuments);
+        System.out.println(">>> Similar documents: " + similarDocuments.size());
 
         String context = similarDocuments.stream()
                 .map(Document::getText)

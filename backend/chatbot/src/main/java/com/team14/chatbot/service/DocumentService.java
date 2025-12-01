@@ -10,7 +10,7 @@ import org.springframework.ai.document.DocumentReader;
 import org.springframework.ai.reader.pdf.PagePdfDocumentReader;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.VectorStore;
-import org.springframework.core.io.Resource;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -30,6 +30,8 @@ import java.util.UUID;
 public class DocumentService {
 
     DocumentRepository documentRepository;
+    
+    @Qualifier("knowledgeBaseVectorStore")
     VectorStore vectorStore;
 
     private static final String UPLOAD_DIR = "uploads/documents";
@@ -125,13 +127,13 @@ public class DocumentService {
             chunk.getMetadata().put("source", filePath.getFileName().toString());
         });
 
+
         // Step 3: Generate embeddings and store in vector database
         // The VectorStore automatically:
         // - Generates embeddings using the configured embedding model (OpenAI)
         // - Stores the embeddings in pgvector
         vectorStore.add(chunks);
 
-        log.info("Successfully stored {} chunks in vector database", chunks.size());
 
         // Update chunk count in document metadata
         Document document = documentRepository.findById(documentId).orElseThrow();
