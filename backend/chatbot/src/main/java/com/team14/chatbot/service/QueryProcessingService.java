@@ -208,7 +208,7 @@ public class QueryProcessingService {
             return parseRoutingResponse(response);
         } catch (Exception e) {
             log.error("Error in query routing, defaulting to RAG pipeline", e);
-            return new RoutingResult(QueryIntent.KNOWLEDGE_QUERY, true, 0.5, 
+            return new RoutingResult(QueryIntent.ADVISORY, true, 0.5,
                     "Mặc định sử dụng RAG do lỗi phân loại");
         }
     }
@@ -235,7 +235,7 @@ public class QueryProcessingService {
             return new RoutingResult(queryIntent, requiresRag, confidence, explanation);
         } catch (Exception e) {
             log.warn("Failed to parse routing response: {}, defaulting to KNOWLEDGE_QUERY", response);
-            return new RoutingResult(QueryIntent.KNOWLEDGE_QUERY, true, 0.5, 
+            return new RoutingResult(QueryIntent.ADVISORY, true, 0.5,
                     "Không thể phân tích response, mặc định KNOWLEDGE_QUERY");
         }
     }

@@ -40,7 +40,7 @@ public class QueryProcessingController {
         QueryProcessingResponse response = queryProcessingService.processQuery(request);
         
         return ApiResponse.<QueryProcessingResponse>builder()
-                .result(response)
+                .data(response)
                 .build();
     }
 
@@ -65,7 +65,7 @@ public class QueryProcessingController {
         QueryProcessingResponse response = queryProcessingService.processQuery(request);
         
         return ApiResponse.<QueryProcessingResponse>builder()
-                .result(response)
+                .data(response)
                 .build();
     }
 
@@ -90,7 +90,7 @@ public class QueryProcessingController {
         QueryProcessingResponse response = queryProcessingService.processQuery(request);
         
         return ApiResponse.<QueryProcessingResponse>builder()
-                .result(response)
+                .data(response)
                 .build();
     }
 
@@ -115,7 +115,7 @@ public class QueryProcessingController {
         QueryProcessingResponse response = queryProcessingService.processQuery(request);
         
         return ApiResponse.<QueryProcessingResponse>builder()
-                .result(response)
+                .data(response)
                 .build();
     }
 
@@ -144,7 +144,7 @@ public class QueryProcessingController {
         QueryProcessingResponse response = queryProcessingService.processQuery(request);
         
         return ApiResponse.<QueryProcessingResponse>builder()
-                .result(response)
+                .data(response)
                 .build();
     }
 }
