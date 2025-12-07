@@ -14,7 +14,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5433/rag_chatbot
     username: postgres
-    password: password
+    password: postgres
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -23,22 +23,22 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-  servlet:
-    multipart:
-      max-file-size: 10MB
-      max-request-size: 10MB
+#  servlet:
+#    multipart:
+#      max-file-size: 10MB
+#      max-request-size: 10MB
 
   ai:
     model:
       chat: google-genai
     google:
       genai:
-        api-key: ${GEMINI_API_KEY}
+        api-key: AIzaSyCnzKLw8bAiWExMQuaqfDcwYktuhQ7ny0g
         chat:
           options:
             model: gemini-2.5-flash
         embedding:
-          api-key: ${GEMINI_API_KEY}
+          api-key: AIzaSyCnzKLw8bAiWExMQuaqfDcwYktuhQ7ny0g
           text:
             options:
               models: text-embedding-004
@@ -60,7 +60,7 @@ jwt:
 # Cohere API Configuration
 cohere:
   api:
-    key: ${COHERE_API_KEY:}  # Set COHERE_API_KEY environment variable
+    key: xsvbz9deCbpv0AHiHIbzTom0YJNgMh1lYZSS6SI5  # Set COHERE_API_KEY environment variable
   rerank:
     model: rerank-multilingual-v3.0
     top-n: 5
