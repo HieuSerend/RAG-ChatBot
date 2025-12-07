@@ -1,7 +1,8 @@
 package com.team14.chatbot.enums;
 
 /**
- * Enum representing the different intents that can be classified from user queries.
+ * Enum representing the different intents that can be classified from user
+ * queries.
  * Used by the Query Router to determine the appropriate processing pipeline.
  */
 public enum QueryIntent {
@@ -22,7 +23,8 @@ public enum QueryIntent {
 
     // --- NHÓM NGOẠI LỆ ---
     AMBIGUOUS("Mơ hồ - cần làm rõ"),
-    TOXIC_CONTENT("Nội dung độc hại / không phù hợp");
+    TOXIC_CONTENT("Nội dung độc hại / không phù hợp"),
+    KNOWLEDGE_QUERY("");
 
     private final String description;
 
