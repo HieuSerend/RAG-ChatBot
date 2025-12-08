@@ -26,7 +26,6 @@ export interface SuggestionItem {
 }
 
 export const SUGGESTIONS_POOL: SuggestionItem[] = [
-    // --- Quantitative Finance ---
     {
         id: 'q1',
         title: 'Explain Gamma',
@@ -56,7 +55,6 @@ export const SUGGESTIONS_POOL: SuggestionItem[] = [
         fullPrompt: 'Describe how Monte Carlo simulations are used to price path-dependent options (like Asian or Barrier options) where analytical solutions are difficult to derive.'
     },
 
-    // --- DeFi Mechanisms ---
     {
         id: 'd1',
         title: 'AMM Mechanics',
@@ -86,7 +84,6 @@ export const SUGGESTIONS_POOL: SuggestionItem[] = [
         fullPrompt: 'Explain the mechanics of Flash Loans in DeFi. How do atomic transactions ensure loan safety, and what are their primary use cases in arbitrage and liquidation?'
     },
 
-    // --- Risk Management ---
     {
         id: 'r1',
         title: 'Value at Risk (VaR)',
@@ -105,7 +102,7 @@ export const SUGGESTIONS_POOL: SuggestionItem[] = [
         id: 'r3',
         title: 'Maximum Drawdown',
         description: 'Peak-to-trough decline measurement.',
-        iconName: 'TrendingUp', // Using TrendingUp inversely or generally for performance
+        iconName: 'TrendingUp',
         fullPrompt: 'Explain Maximum Drawdown (MDD) as a risk metric. Why is it often considered more critical than standard deviation for evaluating hedge fund performance?'
     },
     {
@@ -116,7 +113,6 @@ export const SUGGESTIONS_POOL: SuggestionItem[] = [
         fullPrompt: 'Describe the process of creating a Delta-Neutral portfolio. How does dynamic hedging help manage Gamma risk, and what are the transaction cost implications?'
     },
 
-    // --- Trading Concepts ---
     {
         id: 't1',
         title: 'Mean Reversion',
@@ -140,7 +136,6 @@ export const SUGGESTIONS_POOL: SuggestionItem[] = [
     }
 ];
 
-// --- Utilities ---
 
 export const iconMap: Record<string, LucideIcon> = {
     Sigma,
@@ -160,10 +155,6 @@ export const iconMap: Record<string, LucideIcon> = {
     Landmark
 };
 
-/**
- * Returns a random subset of suggestions from the pool.
- * @param count Number of suggestions to return (default 4)
- */
 export function getRandomSuggestions(count: number = 4): SuggestionItem[] {
     const shuffled = [...SUGGESTIONS_POOL].sort(() => 0.5 - Math.random());
     return shuffled.slice(0, count);

@@ -23,21 +23,20 @@ public class ConversationController {
     ConversationService conversationService;
 
     @PostMapping("/create")
-    public ApiResponse<ConversationResponse> create (@RequestBody ConversationRequest request) throws AppException {
+    public ApiResponse<ConversationResponse> create(@RequestBody ConversationRequest request) throws AppException {
         return ApiResponse.<ConversationResponse>builder().data(conversationService.create(request)).build();
     }
 
     @GetMapping("/list")
-    public ApiResponse<PageResponse<ConversationResponse>> findAllByUserId (
+    public ApiResponse<PageResponse<ConversationResponse>> findAllByUserId(
             @RequestParam(value = "page", required = false, defaultValue = "1") int page,
-            @RequestParam(value = "size", required = false, defaultValue = "10") int size
-    ) throws AppException {
+            @RequestParam(value = "size", required = false, defaultValue = "10") int size) throws AppException {
         return ApiResponse.<PageResponse<ConversationResponse>>builder()
                 .data(conversationService.findAllByUserId(page, size)).build();
     }
 
     @DeleteMapping("/delete/{id}")
-    public ApiResponse<Void> delete (@PathVariable("id") String id){
+    public ApiResponse<Void> delete(@PathVariable("id") String id) {
         conversationService.delete(id);
         return ApiResponse.<Void>builder().build();
     }

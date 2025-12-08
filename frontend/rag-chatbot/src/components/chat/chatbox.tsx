@@ -20,7 +20,7 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import type { ConversationResponse } from '../../types/api';
 import { createMessage, getMessages } from '../../services/messageAPI';
-import { createConversation, getConversations, generateTitleFromText } from '../../services/conversationAPI';
+import { createConversation, getConversations, generateTitleFromText, generateTitle } from '../../services/conversationAPI';
 import RichTextRenderer from './RichTextRenderer';
 
 // --- Utility for Tailwind ---
@@ -197,6 +197,22 @@ export default function Chatbox({ conversationId, onConversationCreated, onSelec
       };
       setMessages((prev) => [...prev, aiMsg]);
       setIsTyping(false);
+
+      // Check if this is the first exchange (1 user message + 1 AI message = 2 total)
+      // Since we just added the AI message, and state update is async, we check if current messages length is 1 (the user message) 
+      // OR we just rely on logic that we added 2 messages in this functions scope.
+      // Safest heuristic here: if we started with 0 messages.
+      if (messages.length === 0) {
+        // Run in background
+        generateTitle(currentConversationId, text).then((newTitle) => {
+          if (newTitle) {
+            // Update history state so sidebar reflects it immediately
+            setHistory(prev => prev.map(conv =>
+              conv.id === currentConversationId ? { ...conv, title: newTitle } : conv
+            ));
+          }
+        });
+      }
 
     } catch (error) {
       console.error("Failed to send message:", error);

@@ -28,3 +28,16 @@ export const generateTitleFromText = async (text: string): Promise<string> => {
   const title = words.slice(0, 4).join(" ");
   return words.length > 4 ? `${title}...` : title;
 };
+
+export const generateTitle = async (conversationId: string, userMessage: string): Promise<string> => {
+  try {
+    const response = await api.post('/api/chat/generate-title', {
+      conversationId,
+      userMessage
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error("Failed to generate title:", error);
+    return "Untitled Analysis";
+  }
+};
