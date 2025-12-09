@@ -122,13 +122,6 @@ export const SUGGESTIONS_POOL: SuggestionItem[] = [
     },
     {
         id: 't2',
-        title: 'Momentum Strategy',
-        description: 'Trend-following implementation.',
-        iconName: 'Activity',
-        fullPrompt: 'What is the theoretical basis for Momentum strategies (Time-Series vs. Cross-Sectional)? Discuss the behavioral finance explanations for why momentum persists.'
-    },
-    {
-        id: 't3',
         title: 'Market Making',
         description: 'Bid-ask spread liquidity provision.',
         iconName: 'Wallet',

@@ -13,7 +13,8 @@ import {
   User,
   Activity,
   MoreHorizontal,
-  AlertTriangle
+  AlertTriangle,
+  Loader
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { clsx, type ClassValue } from 'clsx';
@@ -21,6 +22,7 @@ import { twMerge } from 'tailwind-merge';
 import type { ConversationResponse } from '../../types/api';
 import { createMessage, getMessages } from '../../services/messageAPI';
 import { createConversation, getConversations, generateTitleFromText, generateTitle } from '../../services/conversationAPI';
+import { uploadDocument } from '../../services/documentAPI';
 import RichTextRenderer from './RichTextRenderer';
 
 // --- Utility for Tailwind ---
@@ -66,7 +68,9 @@ export default function Chatbox({ conversationId, onConversationCreated, onSelec
   const [history, setHistory] = useState<ConversationResponse[]>([]);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [suggestions, setSuggestions] = useState<SuggestionItem[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setSuggestions(getRandomSuggestions(4));
@@ -225,6 +229,35 @@ export default function Chatbox({ conversationId, onConversationCreated, onSelec
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage(inputValue);
+    }
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      await uploadDocument(file);
+
+      // Add a system message locally to confirm upload
+      const successMsg: Message = {
+        id: Date.now().toString(),
+        role: 'ai',
+        content: `Document "${file.name}" uploaded successfully.`,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, successMsg]);
+
+    } catch (error: any) {
+      console.error("Upload failed", error);
+      alert(error.message || "Failed to upload document");
+    } finally {
+      setIsUploading(false);
+      // Reset input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -503,8 +536,22 @@ export default function Chatbox({ conversationId, onConversationCreated, onSelec
                 </div>
 
                 <div className="flex items-end gap-2 px-2 pb-1">
-                  <button className="p-2 text-slate-400 hover:text-emerald-400 hover:bg-slate-800 rounded-lg transition-colors mb-0.5">
-                    <Paperclip size={20} />
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    accept="application/pdf"
+                    onChange={handleFileUpload}
+                  />
+                  <button
+                    onClick={() => !isUploading && fileInputRef.current?.click()}
+                    disabled={isUploading}
+                    className={cn(
+                      "p-2 text-slate-400 hover:text-emerald-400 hover:bg-slate-800 rounded-lg transition-colors mb-0.5",
+                      isUploading && "opacity-50 cursor-not-allowed"
+                    )}
+                  >
+                    {isUploading ? <Loader size={20} className="animate-spin text-emerald-400" /> : <Paperclip size={20} />}
                   </button>
 
                   <textarea
