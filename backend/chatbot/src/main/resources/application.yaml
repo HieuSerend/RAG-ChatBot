@@ -1,6 +1,9 @@
 server:
   port: 8081
 spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.ai.model.ollama.autoconfigure.OllamaEmbeddingAutoConfiguration
   application:
     name: chatbot
 
@@ -14,7 +17,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5433/rag_chatbot
     username: postgres
-    password: postgres
+    password: password
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -33,15 +36,23 @@ spring:
       chat: google-genai
     google:
       genai:
-        api-key: AIzaSyCnzKLw8bAiWExMQuaqfDcwYktuhQ7ny0g
+        api-key: ${GEMINI_API_KEY}
         chat:
           options:
             model: gemini-2.5-flash
         embedding:
-          api-key: AIzaSyCnzKLw8bAiWExMQuaqfDcwYktuhQ7ny0g
+          api-key: ${GEMINI_API_KEY}
           text:
             options:
               models: text-embedding-004
+    ollama:
+      embedding:
+        enabled: false
+      base-url: http://localhost:11434
+      chat:
+        model: qwen2.5:3b
+    #        chat:
+#          model: qwen2.5:3b
 
   # Fix error upload file - comment this and save data in kb_embeddings table
     # vectorstore:
@@ -60,7 +71,7 @@ jwt:
 # Cohere API Configuration
 cohere:
   api:
-    key: xsvbz9deCbpv0AHiHIbzTom0YJNgMh1lYZSS6SI5  # Set COHERE_API_KEY environment variable
+    key: ${COHERE_API_KEY}  # Set COHERE_API_KEY environment variable
   rerank:
     model: rerank-multilingual-v3.0
     top-n: 5
@@ -95,3 +106,9 @@ retrieval:
 # CRAG Configuration
 crag:
   max-depth: 2  # Maximum recursion depth for active retrieval
+
+
+logging:
+  level:
+    org.springframework.ai: DEBUG
+    org.springframework.web: DEBUG

@@ -42,5 +42,15 @@ public enum TaskType {
     /**
      * Cross-check correctness (LLM-as-a-Judge)
      */
-    JUDGE_CROSS_CHECK
+    JUDGE_CROSS_CHECK,
+
+    /**
+     * Fusion nhiều câu trả lời (sub-query hoặc multi-intent)
+     */
+    FUSION,
+
+    /**
+     * Self-correct / regenerate sau bước fusion khi validator fail
+     */
+    FUSION_SELF_CORRECT
 }

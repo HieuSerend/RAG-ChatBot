@@ -15,19 +15,22 @@ public class VectorStoreConfig {
     @Bean(name = "knowledgeBaseVectorStore")
     @Primary
     @Qualifier("knowledgeBaseVectorStore")
-    public VectorStore knowledgeBaseVectorStore(JdbcTemplate jdbcTemplate, EmbeddingModel embeddingModel) {
+    public VectorStore knowledgeBaseVectorStore(JdbcTemplate jdbcTemplate,
+                                                @Qualifier("googleGenAiTextEmbedding") EmbeddingModel embeddingModel) {
         return PgVectorStore.builder(jdbcTemplate, embeddingModel) // Builder có tham số
-                .vectorTableName("kb_embeddings") // <-- BẮT BUỘC PHẢI THÊM
+                .vectorTableName("kb_embeddings_view") // <-- BẮT BUỘC PHẢI THÊM
                 .dimensions(768)
                 .distanceType(PgVectorStore.PgDistanceType.COSINE_DISTANCE)
                 .indexType(PgVectorStore.PgIndexType.HNSW)
-                .initializeSchema(true)   // Tự động tạo table nếu chưa có
+                .initializeSchema(false) // Tự động tạo table nếu chưa có
                 .build();
     }
 
     @Bean(name = "chatMemoryVectorStore")
     @Qualifier("chatMemoryVectorStore")
-    public VectorStore chatMemoryVectorStore(JdbcTemplate jdbcTemplate, EmbeddingModel embeddingModel) {
+    public VectorStore chatMemoryVectorStore(JdbcTemplate jdbcTemplate,
+                                             @Qualifier("googleGenAiTextEmbedding") EmbeddingModel embeddingModel
+    ) {
         return PgVectorStore.builder(jdbcTemplate, embeddingModel) // Builder có tham số
                 .vectorTableName("chat_memory_embeddings") // <-- BẮT BUỘC PHẢI THÊM
                 .dimensions(768)

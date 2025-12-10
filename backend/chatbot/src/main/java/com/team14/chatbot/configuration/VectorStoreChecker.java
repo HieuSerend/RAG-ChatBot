@@ -26,7 +26,7 @@ public class VectorStoreChecker implements CommandLineRunner {
     @Override
     public void run(String... args) {
         System.out.println("🧠 Checking VectorStore connections...");
-        checkTable("kb_embeddings", knowledgeBaseVectorStore);
+        checkTable("kb_embeddings_view", knowledgeBaseVectorStore);
         checkTable("chat_memory_embeddings", chatMemoryVectorStore);
         System.out.println("✅ VectorStore health check completed.");
     }

@@ -4,7 +4,7 @@ import com.team14.chatbot.dto.request.GenerationRequest;
 import com.team14.chatbot.dto.response.ApiResponse;
 import com.team14.chatbot.dto.response.GenerationResponse;
 import com.team14.chatbot.enums.TaskType;
-import com.team14.chatbot.service.generation.GenerationService;
+import com.team14.chatbot.service.RagServiceImpl.GenerationService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;

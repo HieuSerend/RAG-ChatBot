@@ -1,28 +1,20 @@
 package com.team14.chatbot.enums;
 
 /**
- * Enum representing the different intents that can be classified from user queries.
+ * Enum representing the different intents that can be classified from user
+ * queries.
  * Used by the Query Router to determine the appropriate processing pipeline.
  */
 public enum QueryIntent {
 
-    // --- NHÓM RAG (Cần tìm kiếm & Tổng hợp) ---
-    FACTUAL_LOOKUP("Hỏi sự kiện, định nghĩa (VD: \"Lãi suất là gì?\")"),
-    COMPARISON("So sánh (VD: \"Vingroup khác gì Viettel?\")"),
+    GREETING("Chào hỏi / giao tiếp xã giao (VD: \"Chào bạn\")"),
+
+    KNOWLEDGE_QUERY("Tìm kiếm kiến thức (VD: \"Lãi suất là gì?\")"),
     ADVISORY("Xin lời khuyên (VD: \"Nên mua vàng hay Đô?\")"),
-    SUMMARIZATION("Tóm tắt (VD: \"Tóm tắt văn bản này\")"),
+    BEHAVIORAL("Phân tích hành vi (VD: \"Tôi đang cảm thấy buồn bã khi nhìn vào cổ phiếu Vingroup\")"),
 
-    // --- NHÓM CÔNG CỤ (Cần Calculator/Code) ---
-    CALCULATION("Tính toán (VD: \"100tr lãi 5% trong 10 năm\")"),
-    DATA_ANALYSIS("Phân tích số liệu (VD: \"Vẽ biểu đồ doanh thu\")"),
-
-    // --- NHÓM XÃ GIAO / HỆ THỐNG ---
-    CHIT_CHAT("Chào hỏi / giao tiếp xã giao"),
-    SYSTEM_COMMAND("Lệnh hệ thống (Xóa history, Đổi ngôn ngữ)"),
-
-    // --- NHÓM NGOẠI LỆ ---
-    AMBIGUOUS("Mơ hồ - cần làm rõ"),
-    TOXIC_CONTENT("Nội dung độc hại / không phù hợp");
+    UNCLEAR("Câu hỏi không rõ ràng (VD: \"Tôi không hiểu câu hỏi này\")"),
+    MALICIOUS_CONTENT("Nội dung độc hại / không phù hợp");
 
     private final String description;
 
