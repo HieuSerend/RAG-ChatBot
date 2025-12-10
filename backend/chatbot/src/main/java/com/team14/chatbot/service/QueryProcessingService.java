@@ -13,7 +13,6 @@ import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -38,21 +37,25 @@ public class QueryProcessingService {
     
     private static final String QUERY_ROUTING_PROMPT = """
         Bạn là một hệ thống phân loại ý định người dùng (Intent Classifier).
-        
+
         Phân tích câu hỏi sau và trả về kết quả theo format JSON:
-        
+
         Câu hỏi: "%s"
-        
+
         Lịch sử hội thoại (nếu có): %s
-        
+
         Phân loại thành một trong các loại sau:
-        - KNOWLEDGE_QUERY: Câu hỏi về kiến thức, thông tin cần tra cứu (ví dụ: "ETF là gì?", "Cách đầu tư chứng khoán?")
-        - GREETING: Chào hỏi, giao tiếp xã giao (ví dụ: "Chào bạn", "Xin chào")
-        - CHITCHAT: Tán gẫu, câu hỏi ngoài lề không cần kiến thức chuyên môn
-        - FOLLOW_UP: Câu hỏi tiếp nối dựa trên ngữ cảnh trước
-        - COMPLEX_QUERY: Câu hỏi phức tạp cần phân tích nhiều khía cạnh
-        - UNCLEAR: Câu hỏi không rõ ràng, cần làm rõ
-        
+        - FACTUAL_LOOKUP: Hỏi sự kiện, định nghĩa (ví dụ: "Lãi suất là gì?", "ETF là gì?")
+        - COMPARISON: So sánh (ví dụ: "Vingroup khác gì Viettel?")
+        - ADVISORY: Xin lời khuyên (ví dụ: "Nên mua vàng hay Đô?", "Cách đầu tư chứng khoán?")
+        - SUMMARIZATION: Tóm tắt (ví dụ: "Tóm tắt văn bản này")
+        - CALCULATION: Tính toán (ví dụ: "100tr lãi 5%% trong 10 năm")
+        - DATA_ANALYSIS: Phân tích số liệu (ví dụ: "Vẽ biểu đồ doanh thu")
+        - CHIT_CHAT: Chào hỏi, tán gẫu, giao tiếp xã giao (ví dụ: "Chào bạn", "Xin chào")
+        - SYSTEM_COMMAND: Lệnh hệ thống (Xóa history, Đổi ngôn ngữ)
+        - AMBIGUOUS: Câu hỏi mơ hồ, không rõ ràng, cần làm rõ
+        - TOXIC_CONTENT: Nội dung độc hại / không phù hợp
+
         Trả về CHÍNH XÁC theo format JSON sau (không có markdown, không có giải thích thêm):
         {"intent": "LOẠI_Ý_ĐỊNH", "requires_rag": true/false, "confidence": 0.0-1.0, "explanation": "Giải thích ngắn gọn"}
         """;
@@ -208,7 +211,7 @@ public class QueryProcessingService {
             return parseRoutingResponse(response);
         } catch (Exception e) {
             log.error("Error in query routing, defaulting to RAG pipeline", e);
-            return new RoutingResult(QueryIntent.KNOWLEDGE_QUERY, true, 0.5, 
+            return new RoutingResult(QueryIntent.FACTUAL_LOOKUP, true, 0.5,
                     "Mặc định sử dụng RAG do lỗi phân loại");
         }
     }
@@ -234,9 +237,9 @@ public class QueryProcessingService {
             
             return new RoutingResult(queryIntent, requiresRag, confidence, explanation);
         } catch (Exception e) {
-            log.warn("Failed to parse routing response: {}, defaulting to KNOWLEDGE_QUERY", response);
-            return new RoutingResult(QueryIntent.KNOWLEDGE_QUERY, true, 0.5, 
-                    "Không thể phân tích response, mặc định KNOWLEDGE_QUERY");
+            log.warn("Failed to parse routing response: {}, defaulting to FACTUAL_LOOKUP", response);
+            return new RoutingResult(QueryIntent.FACTUAL_LOOKUP, true, 0.5,
+                    "Không thể phân tích response, mặc định FACTUAL_LOOKUP");
         }
     }
 
