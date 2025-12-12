@@ -17,6 +17,14 @@ export const getMessages = async (
   return response.data.data.result;
 };
 
+export const createMessage = async (
+  conversationId: string,
+  text: string,
+): Promise<Message> => {
+  const response = await api.post("/message/create", { conversationId, text });
+  return response.data.data;
+};
+
 export const streamMessage = async (
   conversationId: string,
   message: string,

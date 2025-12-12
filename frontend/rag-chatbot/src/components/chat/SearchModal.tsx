@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import type { ConversationResponse as Conversation } from "../../types/api";
-import { MagnifyingGlassIcon, XMarkIcon } from "@heroicons/react/24/solid";
+import { Search, X, MessageSquare, Calendar } from "lucide-react";
 
 interface SearchModalProps {
   isOpen: boolean;
@@ -34,17 +34,17 @@ export default function SearchModal({
 
   const filteredConversations = useMemo(() => {
     if (!searchQuery) {
-      return conversations; // Display all conversations if search query is empty
+      return conversations;
     }
     return conversations.filter((conv) =>
-      conv.title.toLowerCase().includes(searchQuery.toLowerCase())
+      (conv.title || "Untitled").toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [conversations, searchQuery]);
 
   const handleConversationClick = (id: string) => {
     setActiveConversationId(id);
     onClose();
-    setSearchQuery("")
+    setSearchQuery("");
   };
 
   if (!isOpen) {
@@ -52,12 +52,15 @@ export default function SearchModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-gray-900/50 via-purple-900/50 to-gray-900/50 backdrop-blur-sm z-50 flex justify-center items-center">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl transform transition-all">
-        <div className="p-4 border-b border-gray-200">
+    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex justify-center items-center p-4 animate-in fade-in duration-200">
+      <div
+        className="bg-slate-900 border border-slate-700/50 rounded-2xl shadow-2xl w-full max-w-2xl transform transition-all animate-in zoom-in-95 duration-200 overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-4 border-b border-slate-800">
           <div className="relative">
-            <MagnifyingGlassIcon
-              className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+            <Search
+              className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
               aria-hidden="true"
             />
             <input
@@ -65,40 +68,72 @@ export default function SearchModal({
               placeholder="Search conversations..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-10 py-2 rounded-lg border bg-gray-50 border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-10 pr-10 py-3 rounded-xl border border-slate-800 bg-slate-950 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all font-sans"
               autoFocus
             />
-            <button onClick={onClose} className="absolute right-3 top-1/2 -translate-y-1/2">
-                <XMarkIcon className="w-6 h-6 text-gray-500 hover:text-gray-800" />
+            <button
+              onClick={onClose}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-slate-300 transition-colors bg-slate-800/50 hover:bg-slate-800 rounded-md"
+            >
+              <X size={16} />
             </button>
           </div>
         </div>
-        <div className="p-4 max-h-[80vh] overflow-y-auto">
+
+        <div className="max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent p-2">
           {filteredConversations.length > 0 ? (
-            <ul className="space-y-2">
+            <div className="space-y-1">
+              {filteredConversations.length > 0 && searchQuery && (
+                <p className="px-4 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  Search Results
+                </p>
+              )}
               {filteredConversations.map((conv) => (
-                <li key={conv.id}>
-                  <button
-                    onClick={() => handleConversationClick(conv.id)}
-                    className="w-full text-left p-3 rounded-lg hover:bg-gray-100"
-                  >
-                    <p className="font-semibold">{conv.title}</p>
-                    <p className="text-sm text-gray-500">
-                      {new Date(conv.createdDate).toLocaleString()}
+                <button
+                  key={conv.id}
+                  onClick={() => handleConversationClick(conv.id)}
+                  className="w-full text-left p-3 rounded-xl hover:bg-slate-800 border border-transparent hover:border-slate-700/50 transition-all group flex items-start gap-4"
+                >
+                  <div className="p-2 bg-slate-800 group-hover:bg-slate-700 text-emerald-500/80 group-hover:text-emerald-400 rounded-lg transition-colors">
+                    <MessageSquare size={20} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-slate-200 truncate group-hover:text-emerald-400 transition-colors">
+                      {conv.title || "Untitled Analysis"}
                     </p>
-                  </button>
-                </li>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Calendar size={12} className="text-slate-500" />
+                      <p className="text-xs text-slate-500 font-medium">
+                        {new Date(conv.createdDate).toLocaleDateString(undefined, {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                </button>
               ))}
-            </ul>
+            </div>
           ) : (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-12">
+              <div className="w-16 h-16 bg-slate-800/50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-slate-600">
+                <Search size={32} />
+              </div>
               {searchQuery ? (
-                <>No conversations found for "{searchQuery}"</>
+                <p className="text-slate-400">No results found for "<span className="text-slate-200 font-medium">{searchQuery}</span>"</p>
               ) : (
-                <>No conversations available.</>
+                <p className="text-slate-500">Search your conversation history</p>
               )}
             </div>
           )}
+        </div>
+
+        <div className="bg-slate-900 border-t border-slate-800 px-4 py-2 text-[10px] text-slate-500 flex justify-between items-center">
+          <span><span className="font-mono bg-slate-800 px-1 py-0.5 rounded text-slate-400">ESC</span> to close</span>
+          <span>{conversations.length} items</span>
         </div>
       </div>
     </div>

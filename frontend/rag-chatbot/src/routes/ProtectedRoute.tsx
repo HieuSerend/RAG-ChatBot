@@ -1,4 +1,4 @@
-import React, { useEffect, useState, type JSX } from "react";
+import { useEffect, useState, type JSX } from "react";
 import { Navigate } from "react-router-dom";
 import { getAccessToken, getRefreshToken, isAccessTokenValid } from "../services/authService";
 import api from "../services/api";
@@ -11,7 +11,7 @@ export default function ProtectedRoute({ children }: { children: JSX.Element }) 
     (async () => {
       const access = getAccessToken();
       const refresh = getRefreshToken();
-        
+
       // If access token exists and is valid => pass
       if (access && isAccessTokenValid()) {
         setAuthed(true);

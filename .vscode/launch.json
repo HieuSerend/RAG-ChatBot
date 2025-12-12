@@ -1,0 +1,25 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Current File",
+            "request": "launch",
+            "mainClass": "${file}"
+        },
+        {
+            "type": "java",
+            "name": "ChatbotApplication",
+            "request": "launch",
+            "mainClass": "com.team14.chatbot.ChatbotApplication",
+            "projectName": "chatbot",
+            "env": {
+                "GEMINI_API_KEY": "AIzaSyCJNtIisy68DR3ZqgOe2Jz1gWp5yPnadhw",
+                "COHERE_API_KEY": "xsvbz9deCbpv0AHiHIbzTom0YJNgMh1lYZSS6SI5"
+            }
+        }
+    ]
+}

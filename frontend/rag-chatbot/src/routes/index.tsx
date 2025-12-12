@@ -1,9 +1,9 @@
-import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import Home from "../pages/Home/Home";
 import Login from "../pages/Auth/Login";
 import ProtectedRoute from "./ProtectedRoute";
 import Signup from "../pages/Auth/Signup";
+import Profile from "../pages/Profile/Profile";
 
 export default function AppRoutes() {
   return (
@@ -14,10 +14,19 @@ export default function AppRoutes() {
       <Route
         path="/"
         element={
-          // <ProtectedRoute>
-          //   <Home />
-          // </ProtectedRoute>
-          <Home />
+          <ProtectedRoute>
+            <Home />
+          </ProtectedRoute>
+
+        }
+      />
+
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <Profile />
+          </ProtectedRoute>
         }
       />
 
