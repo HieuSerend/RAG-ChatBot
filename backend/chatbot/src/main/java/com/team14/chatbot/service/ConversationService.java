@@ -31,10 +31,11 @@ public class ConversationService {
     ConversationMapper conversationMapper;
     UserRepository userRepository;
 
-    public ConversationResponse create (ConversationRequest request) throws AppException {
+    public ConversationResponse create(ConversationRequest request) throws AppException {
         Conversation conversation = conversationMapper.toConversation(request);
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
-        User user = userRepository.findByUsername(username).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
         conversation.setCreatedDate(Instant.now());
         conversation.setUserId(user.getId());
         return conversationMapper.toConversationResponse(conversationRepository.save(conversation));
@@ -44,9 +45,11 @@ public class ConversationService {
         Sort sort = Sort.by("createdDate").descending();
         Pageable pageable = PageRequest.of(page - 1, size, sort);
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
-        User user = userRepository.findByUsername(username).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
         Page<Conversation> conversationPage = conversationRepository.findAllByUserId(user.getId(), pageable);
-        var conversationData = conversationPage.getContent().stream().map(conversationMapper::toConversationResponse).toList();
+        var conversationData = conversationPage.getContent().stream().map(conversationMapper::toConversationResponse)
+                .toList();
         return PageResponse.<ConversationResponse>builder()
                 .currentPage(page)
                 .totalPages(conversationPage.getTotalPages())
@@ -57,7 +60,7 @@ public class ConversationService {
                 .hasPreviousPage(conversationPage.hasPrevious()).build();
     }
 
-    public void delete (String id){
+    public void delete(String id) {
         conversationRepository.deleteById(id);
     }
 

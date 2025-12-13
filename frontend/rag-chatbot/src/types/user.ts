@@ -7,4 +7,5 @@ export interface UserProfile {
   phoneNumber: string;
   birthday: string;
   preferences: string;
+  username: string; // Added from UserResponse
 }

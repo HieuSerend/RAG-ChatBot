@@ -7,7 +7,7 @@ export default function SignupForm() {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
-    const isValid = password.length >=6 && password === confirmPassword;
+    const isValid = password.length >= 6 && password === confirmPassword;
     const [error, setError] = useState("");
     const navigate = useNavigate();
 
@@ -25,34 +25,61 @@ export default function SignupForm() {
 
 
     return (
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <input className="px-3 py-2 rounded-lg border border-slate-200 text-sm" value={username} onChange={e=>setUsername(e.target.value)} placeholder="Username or Email" required />
-        <input 
-            className="px-3 py-2 rounded-lg border border-slate-200 text-sm"
-            type="password" 
-            value={password} 
-            onChange={e=>setPassword(e.target.value)} 
-            placeholder="Enter your password" required 
-        />
-        <input 
-            className="px-3 py-2 rounded-lg border border-slate-200 text-sm"
-            type="password" 
-            value={confirmPassword} 
-            onChange={e=>setConfirmPassword(e.target.value)} 
-            placeholder="Confirm Password" required 
-        />
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+            <div className="flex flex-col gap-4">
+                <input
+                    className="w-full px-4 py-3 rounded-lg bg-slate-950/50 border border-slate-700 text-white placeholder-slate-400 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all duration-200"
+                    value={username}
+                    onChange={e => setUsername(e.target.value)}
+                    placeholder="Username or Email"
+                    required
+                />
+                <input
+                    className="w-full px-4 py-3 rounded-lg bg-slate-950/50 border border-slate-700 text-white placeholder-slate-400 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all duration-200"
+                    type="password"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder="Enter your password"
+                    required
+                />
+                <input
+                    className="w-full px-4 py-3 rounded-lg bg-slate-950/50 border border-slate-700 text-white placeholder-slate-400 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all duration-200"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm Password"
+                    required
+                />
+            </div>
 
-        {
-            !isValid && 
-            <p className="text-sm text-red-500">Mật khẩu phải nhiều hơn 6 ký tự và khớp nhau</p>
-        }
+            {
+                !isValid &&
+                <p className="text-sm text-rose-400 bg-rose-400/10 p-2 rounded border border-rose-400/20">Mật khẩu phải nhiều hơn 6 ký tự và khớp nhau</p>
+            }
 
-        {
-            error && 
-            <p className="text-sm text-red-500">{error}</p>
-        }
+            {
+                error &&
+                <p className="text-sm text-rose-400 bg-rose-400/10 p-2 rounded border border-rose-400/20">{error}</p>
+            }
 
-    <button type="submit" disabled={!isValid} className="bg-blue-600 text-white p-2 rounded-lg active:opacity-60 transition-opacity duration-150">Đăng ký</button>
+            <button
+                type="submit"
+                disabled={!isValid}
+                className={`w-full px-4 py-3 rounded-lg font-semibold shadow-lg transition-all duration-200 ${!isValid ? 'bg-slate-700 text-slate-400 cursor-not-allowed' : 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-blue-500/20 hover:shadow-blue-500/40 hover:from-blue-500 hover:to-blue-400 active:scale-[0.98]'}`}
+            >
+                Đăng ký
+            </button>
+
+            <div className="flex flex-row items-center justify-center space-x-2 text-sm text-slate-300 mt-2">
+                <span>Đã có tài khoản?</span>
+                <button
+                    className="text-blue-400 font-semibold hover:text-blue-300 transition-colors"
+                    type="button"
+                    onClick={() => navigate("/auth/login")}
+                >
+                    Đăng nhập
+                </button>
+            </div>
         </form>
     );
 }
