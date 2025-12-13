@@ -11,6 +11,7 @@ public enum QueryIntent {
 
     KNOWLEDGE_QUERY("Tìm kiếm kiến thức (VD: \"Lãi suất là gì?\")"),
     ADVISORY("Xin lời khuyên (VD: \"Nên mua vàng hay Đô?\")"),
+    CALCULATION("Tính toán (VD: \"Tôi muốn tính toán lãi suất ngân hàng\")"),
     BEHAVIORAL("Phân tích hành vi (VD: \"Tôi đang cảm thấy buồn bã khi nhìn vào cổ phiếu Vingroup\")"),
 
     UNCLEAR("Câu hỏi không rõ ràng (VD: \"Tôi không hiểu câu hỏi này\")"),

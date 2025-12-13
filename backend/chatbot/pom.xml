@@ -72,6 +72,7 @@
         </dependency>
 
 
+
         <!--        Gemini GoogleGenAI embedding   -->
         <dependency>
             <groupId>org.springframework.ai</groupId>

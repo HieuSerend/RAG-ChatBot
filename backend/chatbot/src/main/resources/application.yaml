@@ -44,7 +44,7 @@ spring:
           api-key: ${GEMINI_API_KEY}
           text:
             options:
-              models: text-embedding-004
+              models: gemini-embedding-001
     ollama:
       embedding:
         enabled: false

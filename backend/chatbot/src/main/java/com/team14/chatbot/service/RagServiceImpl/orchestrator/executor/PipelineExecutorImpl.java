@@ -22,6 +22,8 @@ import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 import java.util.HashMap;
 import java.util.Map;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Service
 @Slf4j
@@ -33,6 +35,7 @@ public class PipelineExecutorImpl implements PipelineExecutorService {
     private final GenerationService generationService;
     private final QueryRetrievalService queryRetrievalService;
     private final QueryProcessingService queryProcessingService;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     private static final String FUSION_PROMPT = """
             Bạn là hệ thống tổng hợp câu trả lời.
@@ -140,6 +143,7 @@ public class PipelineExecutorImpl implements PipelineExecutorService {
     private String runSingleSubPipeline(PipelinePlan plan, String query,
             PipelinePlan.GenerationConfig generationConfig) {
         StringBuilder ctx = new StringBuilder();
+        StringBuilder reasoning = new StringBuilder();
 
         // Retrieval
         if (plan.getRetrievalConfig() != null) {
@@ -162,14 +166,48 @@ public class PipelineExecutorImpl implements PipelineExecutorService {
         // Calculation
         if (plan.getCalculationConfig() != null) {
             var cCfg = plan.getCalculationConfig();
+            // 1) Phân tích bài toán bằng LLM để lấy biểu thức và reasoning
+            String derivedExpression = cCfg.getExpression();
+            try {
+                Map<String, Object> analysisCtx = new HashMap<>();
+                analysisCtx.put("originalQuery", query);
+                GenerationRequest planReq = GenerationRequest.builder()
+                        .taskType(TaskType.CALCULATION_PLANNING)
+                        .userInput(query)
+                        .context(analysisCtx)
+                        .build();
+                // String planningResult = generationService.generate(planReq);
+
+                Map<String, Object> result = generationService.generate(planReq, Map.class);
+                log.info("PlanningResult: {}", result);
+
+                String expression = (String) result.get("expression");
+                List<String> reasoningSteps = (List<String>) result.get("reasoningSteps");
+
+                derivedExpression = expression;
+                reasoning.append(String.join("\n", reasoningSteps)).append("\n");
+            } catch (Exception e) {
+                log.warn("Calculation planning failed, fallback to original expression. Error: {}", e.getMessage());
+            }
+
+            // 2) Log phân tích bài toán
+            ctx.append("=== PHÂN TÍCH BÀI TOÁN ===\n");
+            ctx.append("Câu hỏi: ").append(query).append("\n");
+            ctx.append("Biểu thức đề xuất: ").append(derivedExpression).append("\n\n");
+
             CalculationRequest req = CalculationRequest.builder()
-                    .expression(cCfg.getExpression())
+                    .expression(derivedExpression)
                     .build();
             CalculationResponse result = calculatorService.calculate(req);
             if (result.isSuccess()) {
                 ctx.append("=== KẾT QUẢ TÍNH TOÁN ===\n");
-                ctx.append("Công thức: ").append(cCfg.getExpression()).append("\n");
+                ctx.append("Công thức: ").append(derivedExpression).append("\n");
                 ctx.append("Giá trị: ").append(result.getValue()).append("\n\n");
+
+                // Build reasoning steps for calculation intent
+                reasoning.append("1. Phân tích câu hỏi: ").append(query).append("\n");
+                reasoning.append("2. Biểu thức toán học: ").append(derivedExpression).append("\n");
+                reasoning.append("3. Tính toán giá trị: ").append(result.getValue()).append("\n");
             } else {
                 ctx.append("=== LỖI TÍNH TOÁN ===\n");
                 ctx.append("Loi tinh toan").append("\n\n");
@@ -184,14 +222,22 @@ public class PipelineExecutorImpl implements PipelineExecutorService {
             }
             Map<String, Object> ctxMap = new HashMap<>();
             ctxMap.put("documents", finalContext);
+            if (reasoning.length() > 0) {
+                ctxMap.put("calculationReasoning", reasoning.toString());
+            }
             ctxMap.put("conversationHistory", "");
-            GenerationRequest req = GenerationRequest.builder()
-                    .taskType(TaskType.SUMMARIZE_DOCS)
+            GenerationRequest.GenerationRequestBuilder builder = GenerationRequest.builder()
                     .userInput(query)
                     .context(ctxMap)
-                    .specificModel(generationConfig.getModel())
-                    .build();
-            return generationService.generate(req);
+                    .specificModel(generationConfig.getModel());
+
+            // Nếu có bước tính toán, dùng prompt diễn giải kết quả tính toán
+            if (plan.getCalculationConfig() != null) {
+                builder.taskType(TaskType.INTERPRET_CALCULATION);
+            } else {
+                builder.taskType(TaskType.SUMMARIZE_DOCS);
+            }
+            return generationService.generate(builder.build());
         }
 
         return ctx.toString();
@@ -219,4 +265,5 @@ public class PipelineExecutorImpl implements PipelineExecutorService {
                 .build();
         return generationService.generate(fusionReq);
     }
+
 }

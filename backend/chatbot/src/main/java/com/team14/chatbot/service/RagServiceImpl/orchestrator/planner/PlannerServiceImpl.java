@@ -19,7 +19,9 @@ public class PlannerServiceImpl implements PlannerService {
       return switch (intent) {
         case GREETING -> buildDirectPlan(intent, "Chào bạn, tôi có thể giúp gì?");
         case MALICIOUS_CONTENT -> buildDirectPlan(intent, "Tôi không thể trả lời nội dung này.");
-        case KNOWLEDGE_QUERY, ADVISORY, BEHAVIORAL -> buildKnowledgePlan(intent, userQuery);
+        case CALCULATION -> buildCalculationPlan(intent, userQuery);
+        case ADVISORY -> buildAdvisoryPlan(intent, userQuery);
+        case KNOWLEDGE_QUERY, BEHAVIORAL -> buildKnowledgePlan(intent, userQuery);
         case UNCLEAR -> buildDirectPlan(intent, "Tôi chưa chắc ý bạn. Bạn mô tả rõ hơn nhé?");
         default -> buildDirectPlan(intent, "Tôi chưa chắc ý bạn. Bạn mô tả rõ hơn nhé?");
       };
@@ -45,6 +47,27 @@ public class PlannerServiceImpl implements PlannerService {
     return PipelinePlan.builder()
         .intent(intent.name())
         .query(userQuery)
+        // For knowledge queries: keep pipeline simple -> 1 retrieve, 1 gen, 1 validate
+        .enableStepBack(false)
+        .enableHyde(false)
+        .retrievalConfig(PipelinePlan.RetrievalConfig.builder()
+            .query(userQuery)
+            .topK(5)
+            .enableMultiQuery(false)
+            .multiQueryCount(1)
+            .build())
+        .generationConfig(PipelinePlan.GenerationConfig.builder()
+            .model(Model.GEMINI_2_5_PRO.name())
+            .intent(intent.name())
+            .build())
+        .build();
+  }
+
+  private PipelinePlan buildAdvisoryPlan(QueryIntent intent, String userQuery) {
+    return PipelinePlan.builder()
+        .intent(intent.name())
+        .query(userQuery)
+        // Enable all advanced techniques for advisory queries
         .enableStepBack(true)
         .enableHyde(true)
         .retrievalConfig(PipelinePlan.RetrievalConfig.builder()

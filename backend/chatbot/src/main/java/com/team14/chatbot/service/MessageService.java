@@ -51,7 +51,7 @@ public class MessageService {
                         UserRepository userRepository,
                         ChatService chatService,
                         HybridChatMemoryRepository hybridChatMemoryRepository,
-                        @Qualifier("geminiProClient") ChatClient chatClient) {
+                        @Qualifier("geminiFlashClient") ChatClient chatClient) {
                 this.messageMapper = messageMapper;
                 this.messageRepository = messageRepository;
                 this.conversationRepository = conversationRepository;

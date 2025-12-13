@@ -30,32 +30,32 @@ public class QueryProcessingService {
 
     ChatClient chatClient;
 
-    public QueryProcessingService(@Qualifier("geminiFlashClient") ChatClient chatClient) {
+    public QueryProcessingService(@Qualifier("llamaCollabClient") ChatClient chatClient) {
         this.chatClient = chatClient;
     }
 
     // ==================== PROMPTS ====================
 
     private static final String QUERY_ROUTING_PROMPT = """
-            Bạn là một hệ thống phân loại ý định người dùng (Intent Classifier).
-
-            Phân tích câu hỏi sau và trả về kết quả theo format JSON:
-
-            Câu hỏi: "%s"
-
-            Lịch sử hội thoại (nếu có): %s
-
-            Phân loại thành một trong các loại sau:
-            - KNOWLEDGE_QUERY: Câu hỏi về kiến thức, thông tin cần tra cứu (ví dụ: "ETF là gì?", "Cách đầu tư chứng khoán?")
-            - GREETING: Chào hỏi, giao tiếp xã giao (ví dụ: "Chào bạn", "Xin chào")
-            - ADVISORY: Xin lời khuyên (ví dụ: "Nên mua vàng hay Đô?")
-            - BEHAVIORAL: Phân tích hành vi (ví dụ: "Tôi đang cảm thấy buồn bã khi nhìn vào cổ phiếu Vingroup")
-            - UNCLEAR: Câu hỏi không rõ ràng, cần làm rõ
-            - MALICIOUS_CONTENT: Nội dung độc hại / không phù hợp
-
-            Trả về CHÍNH XÁC theo format JSON sau (không có markdown, không có giải thích thêm):
-            {"intent": "LOẠI_Ý_ĐỊNH", "explanation": "Giải thích ngắn gọn"}
-            """;
+        Bạn là hệ thống phân loại ý định người dùng.
+        
+        Phân tích câu hỏi và (nếu có) lịch sử hội thoại, rồi trả về JSON.
+        
+        Câu hỏi: "%s"
+        Lịch sử: %s
+        
+        Chọn MỘT trong các intent:
+        - KNOWLEDGE_QUERY
+        - GREETING
+        - ADVISORY
+        - CALCULATION
+        - BEHAVIORAL
+        - UNCLEAR
+        - MALICIOUS_CONTENT
+        
+        Trả về đúng format (không markdown, không giải thích thêm):
+        {"intent":"INTENT","explanation":"Mô tả ngắn gọn"}
+        """;
 
     private static final String STEP_BACK_PROMPT = """
             Bạn là một chuyên gia về tư duy phân tích. Nhiệm vụ của bạn là "lùi lại một bước" (step-back)

@@ -33,19 +33,26 @@ import java.util.regex.Pattern;
 public class GenerationServiceImpl implements GenerationService {
 
     private final ChatClient geminiFlashClient;
-    private final ChatClient geminiProClient;
+    private final ChatClient geminiFlashLiteClient;
+    private final ChatClient llamaCollabClient;
+
     private final PromptRegistry promptRegistry;
     private final ModelRouter modelRouter;
     private final ObjectMapper objectMapper;
 
     public GenerationServiceImpl(
             @Qualifier("geminiFlashClient") ChatClient geminiFlashClient,
-            @Qualifier("geminiProClient") ChatClient geminiProClient,
+            @Qualifier("geminiFlashLiteClient") ChatClient geminiFlashLiteClient,
+
+            @Qualifier("llamaCollabClient") ChatClient llamaCollabClient,
+
             PromptRegistry promptRegistry,
             ModelRouter modelRouter,
             ObjectMapper objectMapper) {
         this.geminiFlashClient = geminiFlashClient;
-        this.geminiProClient = geminiProClient;
+        this.geminiFlashLiteClient = geminiFlashLiteClient;
+        this.llamaCollabClient = llamaCollabClient;
+
         this.promptRegistry = promptRegistry;
         this.modelRouter = modelRouter;
         this.objectMapper = objectMapper;
@@ -160,6 +167,8 @@ public class GenerationServiceImpl implements GenerationService {
             prompt = new Prompt(List.of(systemMessage, userMessage));
         }
 
+        chatClient = llamaCollabClient;
+
         String response = chatClient.prompt(prompt).call().content();
 
         log.debug("LLM response length: {} chars", response.length());
@@ -171,7 +180,7 @@ public class GenerationServiceImpl implements GenerationService {
             return geminiFlashClient;
         }
         if (modelName.startsWith("gemini-2.5-pro")) {
-            return geminiProClient;
+            return geminiFlashLiteClient;
         }
         return geminiFlashClient;
     }

@@ -29,7 +29,7 @@ public class ChatService {
     @Autowired
     public ChatService(
             @Qualifier("knowledgeBaseVectorStore") VectorStore knowledgeBaseStore,
-            @Qualifier("geminiProClient") ChatClient chatClient,
+            @Qualifier("geminiFlashClient") ChatClient chatClient,
             HybridChatMemoryRepository hybridChatMemoryRepository,
             RagService ragService) {
         this.knowledgeBaseStore = knowledgeBaseStore;
