@@ -1,7 +1,7 @@
 package com.team14.chatbot.service;
 
 import com.team14.chatbot.repository.HybridChatMemoryRepository;
-import lombok.RequiredArgsConstructor;
+import com.team14.chatbot.service.SummaryService;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
@@ -13,6 +13,7 @@ import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,24 +21,32 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class ChatService {
     private final ChatClient chatClient;
+    // Vector store is injected for potential future use
+    @SuppressWarnings("unused")
     private final VectorStore knowledgeBaseStore;
     private final HybridChatMemoryRepository hybridChatMemoryRepository;
     private final RagService ragService;
+    private final SummaryService summaryService;
 
     @Autowired
     public ChatService(
             @Qualifier("knowledgeBaseVectorStore") VectorStore knowledgeBaseStore,
             @Qualifier("geminiFlashClient") ChatClient chatClient,
             HybridChatMemoryRepository hybridChatMemoryRepository,
-            RagService ragService) {
+            RagService ragService,
+            SummaryService summaryService) {
         this.knowledgeBaseStore = knowledgeBaseStore;
         this.chatClient = chatClient;
         this.hybridChatMemoryRepository = hybridChatMemoryRepository;
         this.ragService = ragService;
+        this.summaryService = summaryService;
     }
 
+    // K_TOKENS is reserved for future token limiting
+    @SuppressWarnings("unused")
     private static final int K_TOKENS = 3;
 
     private static final String PROMPT_TEMPLATE = """
@@ -75,8 +84,11 @@ public class ChatService {
             {KNOWLEDGE_BASE_CONTEXT}
 
             ---
-            [PHẦN LỊCH SỬ HỘI THOẠI - CONVERSATIONCONTEXT]
-            Lịch sử trò chuyện:
+            [PHẦN TÓM TẮT HỘI THOẠI - SUMMARYCONTEXT]
+            {SUMMARY_CONTEXT}
+
+            [PHẦN LỊCH SỬ HỘI THOẠI GẦN ĐÂY - RECENTCONVERSATIONCONTEXT]
+            Các tin nhắn gần đây:
             {CONVERSATION_CONTEXT}
 
             ---
@@ -101,15 +113,30 @@ public class ChatService {
                 .map(Document::getText)
                 .collect(Collectors.joining("\n---\n"));
 
+        // Get recent messages for context
         List<Message> messageList = hybridChatMemoryRepository.findByConversationId(conversationId);
         String conversationContext = messageList.isEmpty() ? "" : messageList.toString();
-        System.out.println("conversation context" + conversationContext);
+        
+        // Get conversation summary
+        String summaryContext = "Chưa có tóm tắt hội thoại.";
+        try {
+            String summary = summaryService.getSummary(conversationId);
+            if (summary != null && !summary.trim().isEmpty()) {
+                summaryContext = "Tóm tắt hội thoại trước đó: " + summary;
+            }
+        } catch (Exception e) {
+            log.error("Error getting conversation summary", e);
+        }
+
+        System.out.println("Conversation context: " + conversationContext);
+        System.out.println("Summary context: " + summaryContext);
 
         SystemPromptTemplate systemPromptTemplate = new SystemPromptTemplate(PROMPT_TEMPLATE);
 
         Message systemMessage = systemPromptTemplate.createMessage(
                 Map.of("KNOWLEDGE_BASE_CONTEXT", knowledgeBaseContext,
-                        "CONVERSATION_CONTEXT", conversationContext));
+                       "CONVERSATION_CONTEXT", conversationContext,
+                       "SUMMARY_CONTEXT", summaryContext));
 
         Prompt prompt = new Prompt(List.of(systemMessage, userMessage));
 
@@ -123,8 +150,15 @@ public class ChatService {
     public String generatePrompt_new(UserMessage userMessage, String conversationId) {
         List<Message> messageList = hybridChatMemoryRepository.findByConversationId(conversationId);
         String conversationContext = messageList.isEmpty() ? "" : messageList.toString();
-
-        return ragService.generate(userMessage.getText(), conversationContext);
+        
+        // Include summary in the context for the new prompt
+        String summary = summaryService.getSummary(conversationId);
+        String fullContext = (summary != null && !summary.isEmpty()) 
+            ? summary
+            : "";
+        log.info("conversationId: {}, \n summary: {} \n fullContext: {}", conversationId, summary, fullContext);
+            
+        return ragService.generate(userMessage.getText(), fullContext);
     }
 
 }

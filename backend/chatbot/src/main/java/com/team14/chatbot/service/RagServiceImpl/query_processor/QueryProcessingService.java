@@ -37,25 +37,34 @@ public class QueryProcessingService {
     // ==================== PROMPTS ====================
 
     private static final String QUERY_ROUTING_PROMPT = """
-        Bạn là hệ thống phân loại ý định người dùng.
-        
-        Phân tích câu hỏi và (nếu có) lịch sử hội thoại, rồi trả về JSON.
-        
-        Câu hỏi: "%s"
-        Lịch sử: %s
-        
-        Chọn MỘT trong các intent:
-        - KNOWLEDGE_QUERY
-        - GREETING
-        - ADVISORY
-        - CALCULATION
-        - BEHAVIORAL
-        - UNCLEAR
-        - MALICIOUS_CONTENT
-        
-        Trả về đúng format (không markdown, không giải thích thêm):
-        {"intent":"INTENT","explanation":"Mô tả ngắn gọn"}
-        """;
+            Bạn là hệ thống phân loại ý định (intent classifier) cho câu hỏi của người dùng trong lĩnh vực tài chính.
+
+            Nhiệm vụ:
+            - Phân tích câu hỏi của người dùng.
+            - Có thể sử dụng ngữ cảnh hội thoại nếu cần.
+            - Chỉ chọn MỘT intent phù hợp nhất.
+
+            Câu hỏi của người dùng:
+            "%s"
+
+            Danh sách intent hợp lệ:
+            - KNOWLEDGE_QUERY : Câu hỏi kiến thức, khái niệm, định nghĩa
+            - GREETING        : Chào hỏi, xã giao
+            - ADVISORY        : Xin lời khuyên, định hướng, tư vấn
+            - CALCULATION     : Yêu cầu tính toán, bài toán tài chính
+            - BEHAVIORAL      : Hỏi về hành vi, thói quen, quyết định của con người
+            - UNCLEAR         : Câu hỏi mơ hồ, thiếu thông tin
+            - MALICIOUS_CONTENT : Nội dung độc hại, nguy hiểm, trái pháp luật
+            - NON_FINANCIAL   : Không liên quan đến lĩnh vực tài chính
+
+            Yêu cầu đầu ra:
+            - Trả về đúng định dạng JSON
+            - Không markdown
+            - Không giải thích thêm ngoài JSON
+
+            Định dạng bắt buộc:
+            {"intent":"INTENT","explanation":"Mô tả ngắn gọn lý do chọn intent"}
+            """;
 
     private static final String STEP_BACK_PROMPT = """
             Bạn là một chuyên gia về tư duy phân tích. Nhiệm vụ của bạn là "lùi lại một bước" (step-back)
@@ -205,7 +214,8 @@ public class QueryProcessingService {
         log.debug("Routing query: {}", query);
 
         String historyContext = conversationHistory != null ? conversationHistory : "Không có";
-        String prompt = String.format(QUERY_ROUTING_PROMPT, query, historyContext);
+        String prompt = String.format(QUERY_ROUTING_PROMPT, query);
+        // , historyContext);
 
         try {
             String response = chatClient.prompt()

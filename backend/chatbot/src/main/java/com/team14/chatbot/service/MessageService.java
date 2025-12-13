@@ -13,6 +13,7 @@ import com.team14.chatbot.repository.ConversationRepository;
 import com.team14.chatbot.repository.HybridChatMemoryRepository;
 import com.team14.chatbot.repository.MessageRepository;
 import com.team14.chatbot.repository.UserRepository;
+import com.team14.chatbot.service.SummaryService;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
 import org.springframework.ai.chat.client.ChatClient;
@@ -41,8 +42,8 @@ public class MessageService {
         final UserRepository userRepository;
         final ChatService chatService;
         final HybridChatMemoryRepository hybridChatMemoryRepository;
-
-        ChatClient chatClient;
+        final SummaryService summaryService;
+        final ChatClient chatClient;
 
         public MessageService(
                         MessageMapper messageMapper,
@@ -51,6 +52,7 @@ public class MessageService {
                         UserRepository userRepository,
                         ChatService chatService,
                         HybridChatMemoryRepository hybridChatMemoryRepository,
+                        SummaryService summaryService,
                         @Qualifier("geminiFlashClient") ChatClient chatClient) {
                 this.messageMapper = messageMapper;
                 this.messageRepository = messageRepository;
@@ -58,6 +60,7 @@ public class MessageService {
                 this.userRepository = userRepository;
                 this.chatService = chatService;
                 this.hybridChatMemoryRepository = hybridChatMemoryRepository;
+                this.summaryService = summaryService;
                 this.chatClient = chatClient;
         }
 
@@ -97,6 +100,9 @@ public class MessageService {
                                                         .build();
 
                                         messageRepository.saveAll(List.of(userMessage, aiMessage));
+                                        
+                                        // Trigger async summarization
+                                        summaryService.updateSummaryAsync(request.getConversationId());
 
                                         AssistantMessage aiMessage2 = new AssistantMessage(aiResponse.toString());
                                         hybridChatMemoryRepository.saveAll(request.getConversationId(),
@@ -208,7 +214,8 @@ public class MessageService {
                                 .role(MessageType.ASSISTANT.name())
                                 .build();
                 messageRepository.saveAll(List.of(userMessage, aiMessage));
-
+                // Trigger async summarization
+                summaryService.updateSummaryAsync(request.getConversationId());
                 return MessageResponse.builder()
                                 .id(aiMessage.getId())
                                 .role(MessageType.ASSISTANT.name())

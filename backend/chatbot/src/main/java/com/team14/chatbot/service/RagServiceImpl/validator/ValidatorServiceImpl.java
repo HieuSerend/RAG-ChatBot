@@ -151,6 +151,8 @@ public class ValidatorServiceImpl implements ValidatorService {
         Map<String, Object> validation = generationServiceIntegrationExample.validateAnswer(userInput, generatedOutput
         , documents);
 
+        log.error("validation: ", validation);
+
         Double accuracy = (Double) validation.get("accuracy");
         Double completeness = (Double) validation.get("completeness");
         Double relevance = (Double) validation.get("relevance");

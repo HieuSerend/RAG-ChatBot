@@ -15,7 +15,8 @@ public enum QueryIntent {
     BEHAVIORAL("Phân tích hành vi (VD: \"Tôi đang cảm thấy buồn bã khi nhìn vào cổ phiếu Vingroup\")"),
 
     UNCLEAR("Câu hỏi không rõ ràng (VD: \"Tôi không hiểu câu hỏi này\")"),
-    MALICIOUS_CONTENT("Nội dung độc hại / không phù hợp");
+    MALICIOUS_CONTENT("Nội dung độc hại / không phù hợp"),
+    NON_FINANCIAL("Không liên quan đến lĩnh vực tài chính (VD: \"Tôi muốn hỏi về thời tiết\")");
 
     private final String description;
 

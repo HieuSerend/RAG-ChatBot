@@ -1,7 +1,6 @@
 package com.team14.chatbot.service.RagServiceImpl.orchestrator.planner;
 
 import com.team14.chatbot.enums.QueryIntent;
-import com.team14.chatbot.service.RagServiceImpl.generator.Model;
 import com.team14.chatbot.service.RagServiceImpl.orchestrator.PlannerService;
 import com.team14.chatbot.service.RagServiceImpl.orchestrator.executor.PipelinePlan;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +22,7 @@ public class PlannerServiceImpl implements PlannerService {
         case ADVISORY -> buildAdvisoryPlan(intent, userQuery);
         case KNOWLEDGE_QUERY, BEHAVIORAL -> buildKnowledgePlan(intent, userQuery);
         case UNCLEAR -> buildDirectPlan(intent, "Tôi chưa chắc ý bạn. Bạn mô tả rõ hơn nhé?");
+        case NON_FINANCIAL -> buildDirectPlan(intent, "Tôi là chatbot tài chính, vui lòng hỏi về lĩnh vực tài chính.");
         default -> buildDirectPlan(intent, "Tôi chưa chắc ý bạn. Bạn mô tả rõ hơn nhé?");
       };
     } catch (Exception e) {
@@ -57,7 +57,6 @@ public class PlannerServiceImpl implements PlannerService {
             .multiQueryCount(1)
             .build())
         .generationConfig(PipelinePlan.GenerationConfig.builder()
-            .model(Model.GEMINI_2_5_PRO.name())
             .intent(intent.name())
             .build())
         .build();
@@ -77,7 +76,6 @@ public class PlannerServiceImpl implements PlannerService {
             .multiQueryCount(3)
             .build())
         .generationConfig(PipelinePlan.GenerationConfig.builder()
-            .model(Model.GEMINI_2_5_PRO.name())
             .intent(intent.name())
             .build())
         .build();
@@ -93,7 +91,6 @@ public class PlannerServiceImpl implements PlannerService {
             .expression(userQuery)
             .build())
         .generationConfig(PipelinePlan.GenerationConfig.builder()
-            .model(Model.GEMINI_2_5_PRO.name())
             .intent(intent.name())
             .build())
         .build();
