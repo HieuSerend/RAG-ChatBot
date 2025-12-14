@@ -4,7 +4,6 @@ import com.team14.chatbot.entity.ConversationSummary;
 import com.team14.chatbot.entity.Message;
 import com.team14.chatbot.repository.ConversationSummaryRepository;
 import com.team14.chatbot.repository.MessageRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -22,22 +21,16 @@ import java.util.Map;
 public class SummaryService {
     private static final int RECENT_MESSAGES_LIMIT = 5;
     private static final String SUMMARY_PROMPT = """
-        Bạn là bộ quản lý bộ nhớ hội thoại.
-        
-        Tóm tắt hiện tại:
-        {current_summary}
-        
-        Các tin nhắn mới:
-        {recent_messages}
-        
-        Hãy cập nhật bản tóm tắt bằng cách:
-        - Giữ lại các ngữ cảnh quan trọng và mục tiêu của người dùng
-        - Loại bỏ các chi tiết không cần thiết
-        - Giữ nội dung ngắn gọn, súc tích
-        - Không thêm giả định hoặc thông tin không có trong hội thoại
-        
-        Chỉ trả về bản tóm tắt đã được cập nhật.
-        """;
+            Update conversation summary. Keep important context and user goals, remove unnecessary details, be concise. Don't add assumptions or information not in conversation.
+
+            Current summary:
+            {current_summary}
+
+            Recent messages:
+            {recent_messages}
+
+            Return updated summary in Vietnamese only.
+            """;
 
     private final ChatClient chatClient;
     private final MessageRepository messageRepository;
@@ -46,8 +39,7 @@ public class SummaryService {
     public SummaryService(
             @Qualifier("llamaCollabClient") ChatClient chatClient,
             MessageRepository messageRepository,
-            ConversationSummaryRepository summaryRepository
-    ) {
+            ConversationSummaryRepository summaryRepository) {
         this.chatClient = chatClient;
         this.messageRepository = messageRepository;
         this.summaryRepository = summaryRepository;
@@ -59,7 +51,7 @@ public class SummaryService {
             // Get recent messages (last 5)
             List<Message> recentMessages = messageRepository
                     .findRecentByConversationId(conversationId, PageRequest.of(0, RECENT_MESSAGES_LIMIT));
-            
+
             if (recentMessages.isEmpty()) {
                 return;
             }
@@ -101,7 +93,7 @@ public class SummaryService {
                             .build());
 
             summaryRepository.save(summary);
-            
+
         } catch (Exception e) {
             log.error("Error updating summary for conversation: " + conversationId, e);
             // Fail silently as per requirements
