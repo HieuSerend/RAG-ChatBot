@@ -1,0 +1,35 @@
+# 1. Bắt buộc: Chặn file chứa API KEY
+.env
+.env.local
+
+# 2. Bắt buộc: Chặn thư mục môi trường ảo (Virtual Environment)
+.venv/
+venv/
+env/
+ENV/
+
+# 3. Chặn các file biên dịch của Python (Rác hệ thống)
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 4. Chặn file cấu hình của PyCharm (IDE)
+.idea/
+*.iml
+
+# 5. Chặn file cấu hình của VS Code (Nếu team có người dùng)
+.vscode/
+
+# 6. Chặn dữ liệu test (PDF, txt) để tránh đẩy file nặng lên Git
+# Nếu bạn muốn lưu data mẫu thì có thể bỏ comment phần này
+*.pdf
+*.docx
+*.txt
+!requirements.txt  # Giữ lại file này
+
+# 7. File hệ điều hành
+.DS_Store
+Thumbs.db
+
+# 8. Log files
+*.log
