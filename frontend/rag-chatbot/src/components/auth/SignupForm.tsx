@@ -19,7 +19,7 @@ export default function SignupForm() {
             await register({ username, password });
             navigate("/auth/login", { replace: true });
         } catch {
-            setError("Đăng ký thất bại");
+            setError("Registration failed");
         }
     }
 
@@ -54,7 +54,7 @@ export default function SignupForm() {
 
             {
                 !isValid &&
-                <p className="text-sm text-rose-400 bg-rose-400/10 p-2 rounded border border-rose-400/20">Mật khẩu phải nhiều hơn 6 ký tự và khớp nhau</p>
+                <p className="text-sm text-rose-400 bg-rose-400/10 p-2 rounded border border-rose-400/20">Password must be at least 6 characters and match</p>
             }
 
             {
@@ -67,17 +67,17 @@ export default function SignupForm() {
                 disabled={!isValid}
                 className={`w-full px-4 py-3 rounded-lg font-semibold shadow-lg transition-all duration-200 ${!isValid ? 'bg-slate-700 text-slate-400 cursor-not-allowed' : 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-blue-500/20 hover:shadow-blue-500/40 hover:from-blue-500 hover:to-blue-400 active:scale-[0.98]'}`}
             >
-                Đăng ký
+                Sign Up
             </button>
 
             <div className="flex flex-row items-center justify-center space-x-2 text-sm text-slate-300 mt-2">
-                <span>Đã có tài khoản?</span>
+                <span>Already have an account?</span>
                 <button
                     className="text-blue-400 font-semibold hover:text-blue-300 transition-colors"
                     type="button"
                     onClick={() => navigate("/auth/login")}
                 >
-                    Đăng nhập
+                    Login
                 </button>
             </div>
         </form>

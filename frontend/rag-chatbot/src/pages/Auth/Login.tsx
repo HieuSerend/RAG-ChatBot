@@ -14,7 +14,7 @@ export default function Login() {
 
       {/* Content Container (z-index to sit above overlay) */}
       <div className="relative z-20">
-        <AuthCard title="Đăng nhập">
+        <AuthCard title="Login">
           <LoginForm />
         </AuthCard>
       </div>
