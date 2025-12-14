@@ -71,6 +71,8 @@ export default function Chatbox({ conversationId, onConversationCreated, onSelec
   const [isUploading, setIsUploading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isSendingMessageRef = useRef(false);
+  const pendingConversationIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     setSuggestions(getRandomSuggestions(4));
@@ -130,8 +132,23 @@ export default function Chatbox({ conversationId, onConversationCreated, onSelec
   useEffect(() => {
     const loadMessages = async () => {
       if (!conversationId) {
-        setMessages([]);
+        // Only clear messages if we're not in the middle of sending a message
+        // and we're not expecting a conversation to be created
+        if (!isSendingMessageRef.current && !pendingConversationIdRef.current) {
+          setMessages([]);
+        }
         return;
+      }
+
+      // Skip loading if we're currently sending a message to this conversation
+      // This prevents overwriting optimistic updates when creating a new conversation
+      if (isSendingMessageRef.current && conversationId === pendingConversationIdRef.current) {
+        return;
+      }
+
+      // Clear pending ref if conversationId matches (conversation was successfully created)
+      if (pendingConversationIdRef.current === conversationId) {
+        pendingConversationIdRef.current = null;
       }
 
       try {
@@ -160,6 +177,9 @@ export default function Chatbox({ conversationId, onConversationCreated, onSelec
   const handleSendMessage = async (text: string) => {
     if (!text.trim() || isTyping) return;
 
+    // Set flag to prevent useEffect from clearing/loading messages
+    isSendingMessageRef.current = true;
+
     // 1. Optimistic User Message
     const newUserMsg: Message = {
       id: Date.now().toString(),
@@ -180,6 +200,8 @@ export default function Chatbox({ conversationId, onConversationCreated, onSelec
         const title = await generateTitleFromText(text);
         const newConv = await createConversation(title);
         currentConversationId = newConv.id;
+        // Store the new conversation ID to track it during the sending process
+        pendingConversationIdRef.current = currentConversationId;
         onConversationCreated(newConv);
       }
 
@@ -218,9 +240,23 @@ export default function Chatbox({ conversationId, onConversationCreated, onSelec
         });
       }
 
+      // Reset flag after a short delay to allow conversationId prop to update
+      // This ensures the useEffect won't overwrite our messages when conversationId changes
+      setTimeout(() => {
+        isSendingMessageRef.current = false;
+        // Clear pending ref after a bit more time to ensure conversationId prop has updated
+        setTimeout(() => {
+          if (pendingConversationIdRef.current === currentConversationId) {
+            pendingConversationIdRef.current = null;
+          }
+        }, 200);
+      }, 100);
+
     } catch (error) {
       console.error("Failed to send message:", error);
       setIsTyping(false);
+      isSendingMessageRef.current = false;
+      pendingConversationIdRef.current = null;
       // Optional: Add error message to chat
     }
   };
