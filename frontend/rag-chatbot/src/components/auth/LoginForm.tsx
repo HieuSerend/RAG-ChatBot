@@ -19,10 +19,10 @@ export default function LoginForm() {
         // login success -> navigate to home (protected)
         navigate("/", { replace: true });
       } else {
-        setMessage("Đăng nhập không thành công");
+        setMessage("Login failed");
       }
     } catch (err: unknown) {
-      const messageText = (err as unknown as { response?: { data?: { message?: string } } })?.response?.data?.message || "Lỗi khi đăng nhập";
+      const messageText = (err as unknown as { response?: { data?: { message?: string } } })?.response?.data?.message || "Login error";
       setMessage(messageText);
     } finally {
       setLoading(false);
@@ -55,18 +55,18 @@ export default function LoginForm() {
         type="submit"
         disabled={loading}
       >
-        {loading ? "Đang xử lý..." : "Đăng nhập"}
+        {loading ? "Processing..." : "Login"}
       </button>
 
       <div className="flex flex-row items-center justify-center space-x-2 text-sm text-slate-300">
-        <span>Chưa có tài khoản?</span>
+        <span>Don't have an account?</span>
         <button
           className="text-blue-400 font-semibold hover:text-blue-300 transition-colors"
           type="button"
           onClick={() => navigate("/auth/signup")}
           disabled={loading}
         >
-          Đăng ký ngay
+          Sign up now
         </button>
       </div>
       {message && <p className="mt-2 text-sm text-red-400 bg-red-400/10 p-2 rounded border border-red-400/20">{message}</p>}

@@ -14,7 +14,7 @@ export default function Signup() {
 
       {/* Content Container */}
       <div className="relative z-20">
-        <AuthCard title="Đăng ký">
+        <AuthCard title="Sign Up">
           <SignupForm />
         </AuthCard>
       </div>
