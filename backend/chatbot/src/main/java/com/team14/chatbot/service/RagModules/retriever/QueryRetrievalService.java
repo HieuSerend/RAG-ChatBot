@@ -48,10 +48,14 @@ public class QueryRetrievalService implements RetrievalService {
         // Step 1: Hybrid Search → Top 50 candidates
         List<Document> hybridResults = hybridSearchService.hybridSearch(query, retrievalType, hybridTopK);
         log.info("Hybrid search returned {} documents", hybridResults.size());
+        log.info("Hybrid search returned {} documents", hybridResults);
+
 
         // Step 2: Metadata Filter
         List<Document> filteredResults = metadataFilterService.filterDocuments(hybridResults, filterMetadata);
         log.info("After filtering: {} documents", filteredResults.size());
+
+        log.info("After filtering: {} documents", filteredResults);
 
         // Step 3: Re-Ranker → Top 30 → Top 5
         List<Document> rerankedResults;
@@ -80,6 +84,20 @@ public class QueryRetrievalService implements RetrievalService {
                 .build();
     }
 
+
+    boolean shouldRerank(String query, List<Document> docs) {
+
+        if (docs.size() <= 5) return false;
+
+        double top1 = docs.get(0).getScore();
+        double top2 = docs.get(1).getScore();
+
+        // vector search đủ tự tin
+        if (top1 - top2 >= 0.15) return false;
+
+        // còn lại → rerank
+        return true;
+    }
     /**
      * Retrieve documents with CRAG evaluation
      * 

@@ -40,6 +40,65 @@ public class QueryProcessingService {
         this.objectMapper = objectMapper;
     }
 
+    // ==================== HIGH LEVEL ORCHESTRATION ====================
+
+    /**
+     * High level execute method that combines in ONE LLM call:
+     * - intent analysis (multi-intent)
+     * - step-back rewriting
+     * - HyDE hypothetical document generation
+     */
+    public QueryProcessingResult execute(String query, String conversationHistory) {
+        log.info("Executing combined query processing for: {}", query);
+
+        String prompt = String.format(EXECUTE_COMBINED_PROMPT, query,
+                conversationHistory != null ? conversationHistory : "");
+
+        try {
+            String response = geminiFlashClient.prompt()
+                    .user(prompt)
+                    .call()
+                    .content();
+
+            String clean = response.trim()
+                    .replace("```json", "")
+                    .replace("```", "")
+                    .trim();
+
+            if (clean.isEmpty()) {
+                log.warn("Combined execute returned empty response, falling back to simple intent routing only");
+                // Fallback: just run intent analysis, no step-back / HyDE
+                List<IntentTask> intents = analyzeIntent(query, conversationHistory);
+                return new QueryProcessingResult(intents, null, null);
+            }
+
+            // Parse to a lightweight DTO (inner class) and then map to
+            // QueryProcessingResult
+            CombinedExecuteRaw raw = objectMapper.readValue(clean, CombinedExecuteRaw.class);
+
+            List<IntentTask> intents = raw.intents() != null ? raw.intents()
+                    : analyzeIntent(query, conversationHistory);
+            String stepBack = raw.step_back_question();
+            String hydeDoc = raw.hyde_document();
+
+            return new QueryProcessingResult(intents, stepBack, hydeDoc);
+        } catch (Exception e) {
+            log.error("Error in combined execute, falling back to intent-only", e);
+            List<IntentTask> intents = analyzeIntent(query, conversationHistory);
+            return new QueryProcessingResult(intents, null, null);
+        }
+    }
+
+    /**
+     * Internal DTO used only for parsing the JSON of the combined execute prompt.
+     * Field names must match JSON keys from EXECUTE_COMBINED_PROMPT.
+     */
+    private record CombinedExecuteRaw(
+            List<IntentTask> intents,
+            String step_back_question,
+            String hyde_document) {
+    }
+
     // ==================== PROMPTS ====================
 
     private static final String QUERY_ROUTING_PROMPT = """
@@ -63,11 +122,19 @@ public class QueryProcessingService {
             """;
 
     private static final String STEP_BACK_PROMPT = """
-            Apply step-back reasoning: analyze the underlying concept and rewrite as a clearer, more specific question.
+            You are refining a vague or short question.
 
-            Original: "%s"
+            Task:
+            - Identify the general intent behind the question.
+            - Rewrite it to be clearer and more understandable.
+            - Keep the question high-level and neutral.
+            - Do NOT add specific numbers, products, scenarios, or assumptions.
+            - Do NOT narrow the scope unnecessarily.
 
-            Return only the rewritten question in Vietnamese, no explanation.
+            Original question:
+            "%s"
+
+            Return only the rewritten question in Vietnamese.
             """;
 
     private static final String HYDE_PROMPT = """
@@ -119,7 +186,6 @@ public class QueryProcessingService {
             Return a SINGLE JSON object only (no markdown, no comments, no extra text) with the following structure:
             {
               "advisory_type": "string - type of advisory (e.g., investment, savings, loan, insurance, etc.)",
-              "assumed_persona": "string - assumed user profile/persona based on the query",
               "knowledge_level": "string - assumed financial knowledge level (beginner, intermediate, advanced)",
               "primary_objective": "string - main objective/goal of the user",
               "time_horizon": "string - time horizon for the advisory (short-term, medium-term, long-term)",
@@ -140,8 +206,57 @@ public class QueryProcessingService {
               ],
               "suitable_when": ["string - conditions when this is suitable"],
               "not_suitable_when": ["string - conditions when this is NOT suitable"],
-              "confidence_level": "low | medium | high",
               "regulatory_sensitivity": true | false
+            }
+            """;
+
+    private static final String EXECUTE_COMBINED_PROMPT = """
+            You are an expert financial assistant and query router.
+
+            Your task is to perform ALL of the following in ONE step for the given user query:
+
+            1) Intent analysis (multi-intent allowed)
+               - Classify the query into the SAME intent set as below.
+               - Each detected intent must be returned as an object in the "intents" array.
+
+               Valid intents: [KNOWLEDGE_QUERY|ADVISORY|CALCULATION|UNSUPPORTED|MALICIOUS_CONTENT|NON_FINANCIAL]
+               Financial:
+               - KNOWLEDGE_QUERY: Ask for definitions or factual financial information.
+               - ADVISORY: Ask for advice, recommendations, or opinions on financial decisions.
+               - CALCULATION: Ask to calculate or compute financial values.
+               - UNSUPPORTED: Financial-related but unclear, incomplete, or out of scope.
+
+               Non-financial:
+               - MALICIOUS_CONTENT: Illegal, fraudulent, or harmful financial requests.
+               - NON_FINANCIAL: Not related to finance.
+
+            2) Step-back rewriting
+               - Rewrite the query into a clearer, more general Vietnamese question
+                 that captures the core financial problem.
+               - Keep it neutral, do NOT add specific numbers/products/assumptions.
+
+            3) HyDE hypothetical document
+               - Imagine a short Vietnamese document (3-8 sentences)
+                 that would perfectly answer the query.
+
+            User query:
+            "%s"
+
+            Conversation history (may be empty, use only if relevant):
+            "%s"
+
+            Return a SINGLE JSON object only (no markdown, no comments, no extra text)
+            with the following structure:
+            {
+              "intents": [
+                {
+                  "intent": "INTENT_NAME",
+                  "query": "original or refined query for this intent",
+                  "explanation": "short Vietnamese explanation why this intent was chosen"
+                }
+              ],
+              "step_back_question": "Vietnamese rewritten general question",
+              "hyde_document": "Vietnamese hypothetical document (3-8 sentences)"
             }
             """;
 

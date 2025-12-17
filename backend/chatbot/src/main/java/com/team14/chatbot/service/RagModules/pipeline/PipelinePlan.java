@@ -5,10 +5,6 @@ import com.team14.chatbot.service.RagModules.retriever.RetrievalType;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.ToString;
-import java.util.Map;
-
-import com.team14.chatbot.enums.TaskType;
-import org.springframework.ai.chat.prompt.Prompt;
 
 @Builder
 @Getter
@@ -22,7 +18,11 @@ public class PipelinePlan {
     // Query gốc của người dùng
     private String query;
 
+    // Query đã được xử lý (ví dụ: step-back) dùng cho pipeline executor
+    private String pipelineQuery;
 
+    // Tài liệu HyDE tương ứng với query (nếu có)
+    private String hydeDocument;
 
     // 2. Cấu hình các Module (Nullable - Null nghĩa là không chạy)
     private QueryProcessingConfig queryProcessingConfig;

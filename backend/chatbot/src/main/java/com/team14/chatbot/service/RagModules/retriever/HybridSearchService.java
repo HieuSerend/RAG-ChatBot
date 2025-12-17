@@ -22,9 +22,9 @@ public class HybridSearchService {
     private final VectorStore caseStudiesVectorStore;
     private final Bm25IndexService bm25IndexService;
 
-    private static final int DENSE_TOP_K = 50;
-    private static final int SPARSE_TOP_K = 50;
-    private static final int RRF_K = 60; // RRF constant
+    private static final int DENSE_TOP_K = 10;
+    private static final int SPARSE_TOP_K = 10;
+    private static final int RRF_K = 10; // RRF constant
 
     /**
      * Perform hybrid search: Dense + Sparse + RRF Fusion
@@ -62,6 +62,7 @@ public class HybridSearchService {
                             SearchRequest.builder()
                                     .query(query)
                                     .topK(topK)
+//                                    .similarityThreshold(0.65)
                                     .build());
 
                 case CASE_STUDIES_RETRIEVE:
@@ -69,6 +70,8 @@ public class HybridSearchService {
                             SearchRequest.builder()
                                     .query(query)
                                     .topK(topK)
+//                                    .similarityThreshold(0.65)
+
                                     .build());
 
                 default:
