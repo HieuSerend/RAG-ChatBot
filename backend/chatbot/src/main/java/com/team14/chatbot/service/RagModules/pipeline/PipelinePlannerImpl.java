@@ -71,7 +71,9 @@ public class PipelinePlannerImpl implements PlannerService {
         .queryProcessingConfig(null)
         .retrievalConfig(null)
         .calculationConfig(null)
-        .generationConfig(null)
+            .generationConfig(PipelinePlan.GenerationConfig.builder()
+                    .model(Model.GEMINI_2_5_FLASH_LITE)
+                    .build())
         .build();
   }
 
