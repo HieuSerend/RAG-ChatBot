@@ -311,7 +311,7 @@ export default function Chatbox({ conversationId, onConversationCreated, onSelec
             <div className="p-4 border-b border-slate-800 flex items-center justify-between">
               <div className="flex items-center gap-2 font-semibold text-emerald-400 tracking-tight">
                 <Activity size={20} />
-                <span>DOCUCHAT</span>
+                <span>FINCHAT</span>
               </div>
               <button onClick={() => setSidebarOpen(false)} className="text-slate-500 hover:text-slate-300 md:hidden">
                 <X size={20} />

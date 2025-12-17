@@ -9,6 +9,7 @@ import com.team14.chatbot.service.RagModules.PlannerService;
 import com.team14.chatbot.service.RagModules.ValidatorService;
 import com.team14.chatbot.service.RagModules.query_processor.QueryProcessingService;
 import com.team14.chatbot.service.RagModules.query_processor.IntentTask;
+import com.team14.chatbot.service.RagModules.query_processor.QueryProcessingResult;
 import com.team14.chatbot.service.RagModules.validator.ValidationResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -40,18 +41,25 @@ public class RagService {
         if (!inputValidation.isValid()) {
             return "Yêu cầu không hợp lệ: " + inputValidation.getReason();
         }
+        log.info("Yêu cầu hợp lệ!");
 
-        // B1: phân loại intent
-        List<IntentTask> tasks = queryProcessor.analyzeIntent(userQuery, conversationHistory);
+        // B1: xử lý query tổng hợp (intent + step-back + HyDE)
+        QueryProcessingResult processingResult = queryProcessor.execute(userQuery, conversationHistory);
+        List<IntentTask> tasks = processingResult.intents();
+
         if (tasks.stream().anyMatch(intentTask -> intentTask.intent() == QueryIntent.MALICIOUS_CONTENT)) {
             return "Phát hiện nội dung độc hại, vui lòng đặt lại câu hỏi khác.";
         }
 
-        log.info("Intents: {}", tasks.stream().map(IntentTask::intent));
+        log.info("Intents: {}", tasks.stream().map(IntentTask::intent).toList());
+        log.info("StepBack question: {}", processingResult.stepBackQuestion());
+        log.info("HyDE document length: {}", processingResult.hydeDocument() != null
+                ? processingResult.hydeDocument().length()
+                : 0);
 
         // B3: tạo plan cho intent (hiện tại 1 intent; có thể mở rộng multi-intent sau)
-        List<PipelinePlan> plans = planner.createPlans(tasks);
-        log.info("Plans: {}", plans);
+        List<PipelinePlan> plans = planner.createPlans(processingResult);
+        log.info("Plans: {}", plans.stream().map(PipelinePlan::toString));
 
         // B4: thực thi song song từng intent pipeline
         try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {

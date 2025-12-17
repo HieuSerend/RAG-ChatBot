@@ -78,9 +78,9 @@ public class ReRankerService {
                     .bodyValue(request)
                     .retrieve()
                     .bodyToMono(CohereRerankResponse.class)
-                    .retryWhen(Retry.backoff(3, Duration.ofSeconds(1))
-                            .filter(throwable -> throwable instanceof Exception))
-                    .block(Duration.ofSeconds(30));
+//                    .retryWhen(Retry.backoff(3, Duration.ofSeconds(1))
+//                            .filter(throwable -> throwable instanceof Exception))
+                    .block(Duration.ofSeconds(10));
 
             if (response == null || response.getResults() == null) {
                 log.warn("Cohere rerank returned null response, returning original documents");

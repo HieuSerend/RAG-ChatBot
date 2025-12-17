@@ -21,7 +21,7 @@ public class BgeM3EmbeddingModel implements EmbeddingModel {
 
     private final RestClient restClient;
     // URL từ ngrok của bạn
-    private final String API_URL = "https://unapprovable-bryon-subpeltately.ngrok-free.dev/embed_batch";
+    private final String API_URL = "https://hypergamous-bernadine-unspitefully.ngrok-free.dev/embed_batch";
 
     public BgeM3EmbeddingModel(RestClient.Builder restClientBuilder) {
         // --- PHẦN QUAN TRỌNG NHẤT: SỬA LỖI DNS ---

@@ -155,7 +155,7 @@ public class ChatService {
         String fullContext = (summary != null && !summary.isEmpty()) 
             ? summary
             : "";
-        log.info("conversationId: {}, \n summary: {} \n fullContext: {}", conversationId, summary, fullContext);
+        log.info("\nconversationId: {}, \n summary: {} \n fullContext: {}", conversationId, summary, fullContext);
             
         return ragService.generate(userMessage.getText(), fullContext);
     }
