@@ -31,7 +31,7 @@ public class DocumentService {
 
     DocumentRepository documentRepository;
     
-    @Qualifier("knowledgeBaseVectorStore")
+    @Qualifier("knowledgeVectorStore")
     VectorStore vectorStore;
 
     private static final String UPLOAD_DIR = "uploads/documents";

@@ -55,12 +55,13 @@ public class GenerationServiceImpl implements GenerationService {
                     break;
                 case GEMINI_2_5_FLASH_LITE:
                     chatClient = geminiFlashLiteClient;
+                    break;
                 default:
                     chatClient = llamaCollabClient;
                     ;
             }
 
-            chatClient = geminiFlashClient;
+//            chatClient = geminiFlashClient;
 
             String rawResponse = chatClient.prompt(prompt).call().content();
 
@@ -91,12 +92,13 @@ public class GenerationServiceImpl implements GenerationService {
                     break;
                 case GEMINI_2_5_FLASH_LITE:
                     chatClient = geminiFlashLiteClient;
+                    break;
                 default:
                     chatClient = llamaCollabClient;
                     ;
             }
 
-            chatClient = geminiFlashClient;
+//            chatClient = geminiFlashClient;
 
             String rawResponse = chatClient.prompt(prompt).call().content();
 

@@ -16,29 +16,32 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class HybridSearchService {
 
-    @Qualifier("knowledgeBaseVectorStore")
-    private final VectorStore knowledgeBaseVectorStore;
+    @Qualifier("knowledgeVectorStore")
+    private final VectorStore knowledgeVectorStore;
+    @Qualifier("caseStudiesVectorStore")
+    private final VectorStore caseStudiesVectorStore;
     private final Bm25IndexService bm25IndexService;
-    
+
     private static final int DENSE_TOP_K = 50;
     private static final int SPARSE_TOP_K = 50;
     private static final int RRF_K = 60; // RRF constant
 
     /**
      * Perform hybrid search: Dense + Sparse + RRF Fusion
+     * 
      * @param query The search query
-     * @param topK Number of results to return after RRF
+     * @param topK  Number of results to return after RRF
      * @return List of documents ranked by RRF score
      */
-    public List<Document> hybridSearch(String query, int topK) {
+    public List<Document> hybridSearch(String query, RetrievalType retrievalType, int topK) {
         log.info("Performing hybrid search for query: {}", query);
 
         // Step 1: Dense Retrieval (Embeddings)
-        List<Document> denseResults = denseRetrieval(query, DENSE_TOP_K);
+        List<Document> denseResults = denseRetrieval(query, retrievalType, DENSE_TOP_K);
         log.info("Dense retrieval returned {} documents", denseResults.size());
 
         // Step 2: Sparse Retrieval (BM25)
-        List<Document> sparseResults = sparseRetrieval(query, SPARSE_TOP_K);
+        List<Document> sparseResults = sparseRetrieval(query, retrievalType, SPARSE_TOP_K);
         log.info("Sparse retrieval returned {} documents", sparseResults.size());
 
         // Step 3: RRF Fusion
@@ -51,14 +54,26 @@ public class HybridSearchService {
     /**
      * Dense retrieval using vector similarity search
      */
-    private List<Document> denseRetrieval(String query, int topK) {
+    private List<Document> denseRetrieval(String query, RetrievalType retrievalType, int topK) {
         try {
-            return knowledgeBaseVectorStore.similaritySearch(
-                    SearchRequest.builder()
-                            .query(query)
-                            .topK(topK)
-                            .build()
-            );
+            switch (retrievalType) {
+                case KNOWLEDGE_RETRIEVE:
+                    return knowledgeVectorStore.similaritySearch(
+                            SearchRequest.builder()
+                                    .query(query)
+                                    .topK(topK)
+                                    .build());
+
+                case CASE_STUDIES_RETRIEVE:
+                    return caseStudiesVectorStore.similaritySearch(
+                            SearchRequest.builder()
+                                    .query(query)
+                                    .topK(topK)
+                                    .build());
+
+                default:
+                    return Collections.emptyList();
+            }
         } catch (Exception e) {
             log.error("Error in dense retrieval", e);
             return Collections.emptyList();
@@ -68,9 +83,9 @@ public class HybridSearchService {
     /**
      * Sparse retrieval using BM25
      */
-    private List<Document> sparseRetrieval(String query, int topK) {
+    private List<Document> sparseRetrieval(String query, RetrievalType retrievalType, int topK) {
         try {
-            return bm25IndexService.search(query, topK);
+            return bm25IndexService.search(query, retrievalType, topK);
         } catch (Exception e) {
             log.error("Error in sparse retrieval", e);
             return Collections.emptyList();
@@ -81,9 +96,9 @@ public class HybridSearchService {
      * Reciprocal Rank Fusion (RRF) algorithm
      * Formula: RRF(d) = Σ 1/(k + rank_i(d))
      * 
-     * @param denseResults Results from dense retrieval
+     * @param denseResults  Results from dense retrieval
      * @param sparseResults Results from sparse retrieval
-     * @param topK Number of results to return
+     * @param topK          Number of results to return
      * @return Fused and ranked documents
      */
     private List<Document> rrfFusion(List<Document> denseResults, List<Document> sparseResults, int topK) {
@@ -123,7 +138,7 @@ public class HybridSearchService {
         if (id != null) {
             return id.toString();
         }
-        
+
         // Fallback: use content hash
         return String.valueOf(doc.getText().hashCode());
     }
@@ -161,4 +176,3 @@ public class HybridSearchService {
         }
     }
 }
-

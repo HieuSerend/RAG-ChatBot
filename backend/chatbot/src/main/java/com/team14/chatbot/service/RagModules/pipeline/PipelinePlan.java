@@ -1,6 +1,7 @@
 package com.team14.chatbot.service.RagModules.pipeline;
 
 import com.team14.chatbot.service.RagModules.generation.Model;
+import com.team14.chatbot.service.RagModules.retriever.RetrievalType;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.ToString;
@@ -21,10 +22,10 @@ public class PipelinePlan {
     // Query gốc của người dùng
     private String query;
 
-    private boolean enableStepBack;
-    private boolean enableHyde;
+
 
     // 2. Cấu hình các Module (Nullable - Null nghĩa là không chạy)
+    private QueryProcessingConfig queryProcessingConfig;
 
     // Cấu hình tìm kiếm
     private RetrievalConfig retrievalConfig;
@@ -36,21 +37,31 @@ public class PipelinePlan {
     private GenerationConfig generationConfig;
 
     // --- Inner Config Classes ---
+    @Builder
+    @Getter
+    public static class QueryProcessingConfig {
+        private boolean enableMultiQuery;
+        private int multiQueryCount;
+        private boolean enableStepBack;
+        private boolean enableHyde;
+    }
+
+
 
     @Builder
     @Getter
     public static class RetrievalConfig {
+        private RetrievalType retrievalType;
         private String query;
         private int topK;
-        private boolean enableMultiQuery;
-        private int multiQueryCount;
     }
 
     @Builder
     @Getter
     public static class CalculationConfig {
-        private String expression;
-        private Map<String, Object> variables;
+        private boolean isCalculationNeeded;
+//        private String expression;
+//        private Map<String, Object> variables;
     }
 
     @Builder

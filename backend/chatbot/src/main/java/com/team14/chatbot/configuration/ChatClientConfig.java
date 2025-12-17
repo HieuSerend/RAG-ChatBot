@@ -22,8 +22,8 @@ import java.net.http.HttpClient;
 @EnableScheduling
 public class ChatClientConfig {
 
-    private static final String GEMINI_FLASH = "gemini-2.5-flash";
-    private static final String GEMINI_FLASH_LITE = "gemini-2.5-flash-lite";
+    private static final String GEMINI_FLASH = "gemini-2.0-flash";
+    private static final String GEMINI_FLASH_LITE = "gemini-2.0-flash-lite";
 
     @Bean
     public MyCustomChatModel myCustomChatModel(RestClient.Builder builder) {

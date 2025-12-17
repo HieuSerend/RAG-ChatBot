@@ -12,10 +12,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.*;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.MMapDirectory;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -70,7 +67,7 @@ public class Bm25IndexService {
         synchronized (indexLock) {
             try {
                 log.info("Rebuilding BM25 index...");
-                
+
                 // Close existing reader if any
                 if (indexReader != null) {
                     indexReader.close();
@@ -79,25 +76,33 @@ public class Bm25IndexService {
                 // Create new index
                 IndexWriterConfig config = new IndexWriterConfig(analyzer);
                 config.setOpenMode(IndexWriterConfig.OpenMode.CREATE);
-                
+
                 try (IndexWriter writer = new IndexWriter(indexDirectory, config)) {
                     // Query all documents from kb_embeddings
-                    String sql = "SELECT id, content, metadata FROM kb_embeddings";
+                    String sql = "SELECT\n" +
+                            "\n" +
+                            "    e.id,\n" +
+                            "\n" +
+                            "    e.document as content,\n" +
+                            "\n" +
+                            "    e.cmetadata as metadata,\n" +
+                            "\n" +
+                            "    c.name as doc_type  FROM langchain_pg_embedding e JOIN langchain_pg_collection c ON e.collection_id = c.uuid";
                     List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql);
-                    
+
                     for (Map<String, Object> row : rows) {
                         org.apache.lucene.document.Document doc = new org.apache.lucene.document.Document();
                         doc.add(new StringField("id", row.get("id").toString(), Field.Store.YES));
                         doc.add(new TextField("content", row.get("content").toString(), Field.Store.YES));
-                        
+                        doc.add(new StringField("doc_type", row.get("doc_type").toString(), Field.Store.NO));
                         // Store metadata as JSON string for later retrieval
                         if (row.get("metadata") != null) {
                             doc.add(new StringField("metadata", row.get("metadata").toString(), Field.Store.YES));
                         }
-                        
+
                         writer.addDocument(doc);
                     }
-                    
+
                     writer.commit();
                     log.info("Indexed {} documents", rows.size());
                 }
@@ -105,7 +110,7 @@ public class Bm25IndexService {
                 // Create new searcher
                 indexReader = DirectoryReader.open(indexDirectory);
                 indexSearcher = new IndexSearcher(indexReader);
-                
+
                 log.info("BM25 index rebuilt successfully with {} documents", indexReader.numDocs());
             } catch (Exception e) {
                 log.error("Failed to rebuild BM25 index", e);
@@ -122,7 +127,7 @@ public class Bm25IndexService {
             try {
                 IndexWriterConfig config = new IndexWriterConfig(analyzer);
                 config.setOpenMode(IndexWriterConfig.OpenMode.CREATE_OR_APPEND);
-                
+
                 try (IndexWriter writer = new IndexWriter(indexDirectory, config)) {
                     org.apache.lucene.document.Document doc = new org.apache.lucene.document.Document();
                     doc.add(new StringField("id", id, Field.Store.YES));
@@ -140,7 +145,7 @@ public class Bm25IndexService {
                 }
                 indexReader = DirectoryReader.open(indexDirectory);
                 indexSearcher = new IndexSearcher(indexReader);
-                
+
                 log.debug("Added document {} to BM25 index", id);
             } catch (Exception e) {
                 log.error("Failed to add document to BM25 index", e);
@@ -150,11 +155,13 @@ public class Bm25IndexService {
 
     /**
      * Search using BM25 algorithm
+     * 
      * @param queryText The search query
-     * @param topK Number of results to return
+     * @param topK      Number of results to return
      * @return List of Spring AI Documents with scores
      */
-    public List<org.springframework.ai.document.Document> search(String queryText, int topK) {
+    public List<org.springframework.ai.document.Document> search(String queryText, RetrievalType retrievalType,
+            int topK) {
         synchronized (indexLock) {
             if (indexSearcher == null) {
                 log.warn("BM25 index not initialized, returning empty results");
@@ -162,10 +169,27 @@ public class Bm25IndexService {
             }
 
             try {
+                String docTypeFilter = "";
+                switch (retrievalType) {
+                    case KNOWLEDGE_RETRIEVE:
+                        docTypeFilter = "gemini_knowledge_base";
+                        break;
+                    case CASE_STUDIES_RETRIEVE:
+                        docTypeFilter = "advisory_case_studies";
+                        break;
+                    default:
+                        break;
+                }
                 QueryParser parser = new QueryParser("content", analyzer);
-                Query query = parser.parse(QueryParser.escape(queryText));
-                
-                TopDocs topDocs = indexSearcher.search(query, topK);
+                Query contentQuery = parser.parse(QueryParser.escape(queryText));
+                Query typeQuery = new TermQuery(new org.apache.lucene.index.Term("doc_type", docTypeFilter));
+                BooleanQuery.Builder booleanQueryBuilder = new BooleanQuery.Builder();
+                booleanQueryBuilder.add(contentQuery, org.apache.lucene.search.BooleanClause.Occur.MUST);   // Phải khớp nội dung
+                booleanQueryBuilder.add(typeQuery, org.apache.lucene.search.BooleanClause.Occur.FILTER);    // VÀ phải đúng loại này
+
+                Query finalQuery = booleanQueryBuilder.build();
+
+                TopDocs topDocs = indexSearcher.search(finalQuery, topK);
                 ScoreDoc[] hits = topDocs.scoreDocs;
 
                 List<org.springframework.ai.document.Document> results = new ArrayList<>();
@@ -174,7 +198,7 @@ public class Bm25IndexService {
                     String content = luceneDoc.get("content");
                     String id = luceneDoc.get("id");
                     String metadataStr = luceneDoc.get("metadata");
-                    
+
                     // Convert to Spring AI Document
                     Map<String, Object> metadata = new HashMap<>();
                     metadata.put("id", id);
@@ -182,12 +206,12 @@ public class Bm25IndexService {
                         // Parse JSONB metadata if needed
                         metadata.put("bm25_score", hit.score);
                     }
-                    
-                    org.springframework.ai.document.Document springDoc = 
-                            new org.springframework.ai.document.Document(content, metadata);
+
+                    org.springframework.ai.document.Document springDoc = new org.springframework.ai.document.Document(
+                            content, metadata);
                     results.add(springDoc);
                 }
-                
+
                 log.debug("BM25 search returned {} results for query: {}", results.size(), queryText);
                 return results;
             } catch (ParseException | IOException e) {
@@ -209,19 +233,20 @@ public class Bm25IndexService {
             try {
                 QueryParser parser = new QueryParser("id", analyzer);
                 Query query = parser.parse(QueryParser.escape(id));
-                
+
                 TopDocs topDocs = indexSearcher.search(query, 1);
                 if (topDocs.totalHits.value > 0) {
-                    org.apache.lucene.document.Document luceneDoc = indexSearcher.storedFields().document(topDocs.scoreDocs[0].doc);
+                    org.apache.lucene.document.Document luceneDoc = indexSearcher.storedFields()
+                            .document(topDocs.scoreDocs[0].doc);
                     String content = luceneDoc.get("content");
                     String metadataStr = luceneDoc.get("metadata");
-                    
+
                     Map<String, Object> metadata = new HashMap<>();
                     metadata.put("id", id);
                     if (metadataStr != null) {
                         metadata.put("metadata", metadataStr);
                     }
-                    
+
                     return Optional.of(new org.springframework.ai.document.Document(content, metadata));
                 }
             } catch (Exception e) {
@@ -231,4 +256,3 @@ public class Bm25IndexService {
         }
     }
 }
-

@@ -25,7 +25,6 @@ import java.util.stream.Collectors;
 public class ChatService {
     private final ChatClient chatClient;
     // Vector store is injected for potential future use
-    @SuppressWarnings("unused")
     private final VectorStore knowledgeBaseStore;
     private final HybridChatMemoryRepository hybridChatMemoryRepository;
     private final RagService ragService;
@@ -33,7 +32,7 @@ public class ChatService {
 
     @Autowired
     public ChatService(
-            @Qualifier("knowledgeBaseVectorStore") VectorStore knowledgeBaseStore,
+            @Qualifier("knowledgeVectorStore") VectorStore knowledgeBaseStore,
             @Qualifier("geminiFlashClient") ChatClient chatClient,
             HybridChatMemoryRepository hybridChatMemoryRepository,
             RagService ragService,

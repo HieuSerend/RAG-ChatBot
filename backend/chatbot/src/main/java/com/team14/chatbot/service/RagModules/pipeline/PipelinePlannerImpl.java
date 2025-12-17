@@ -6,6 +6,7 @@ import com.team14.chatbot.service.RagModules.PlannerService;
 import com.team14.chatbot.service.RagModules.generation.Model;
 import com.team14.chatbot.service.RagModules.query_processor.IntentTask;
 
+import com.team14.chatbot.service.RagModules.retriever.RetrievalType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -56,7 +57,9 @@ public class PipelinePlannerImpl implements PlannerService {
     return PipelinePlan.builder()
         .intent(intent.name())
         .query(userQuery)
+            .queryProcessingConfig(null)
         .retrievalConfig(null)
+            .calculationConfig(null)
         .generationConfig(null)
         .build();
   }
@@ -65,15 +68,22 @@ public class PipelinePlannerImpl implements PlannerService {
     return PipelinePlan.builder()
         .intent(intent.name())
         .query(userQuery)
+            .queryProcessingConfig(
+                    PipelinePlan.QueryProcessingConfig.builder()
+                            .enableStepBack(true)
+                            .enableHyde(true)
+                            .enableMultiQuery(false)
+                            .multiQueryCount(0)
+                            .build()
+            )
         // For knowledge queries: keep pipeline simple -> 1 retrieve, 1 gen, 1 validate
-        .enableStepBack(false)
-        .enableHyde(false)
+
         .retrievalConfig(PipelinePlan.RetrievalConfig.builder()
             .query(userQuery)
             .topK(5)
-            .enableMultiQuery(false)
-            .multiQueryCount(1)
+                .retrievalType(RetrievalType.KNOWLEDGE_RETRIEVE)
             .build())
+            .calculationConfig(null)
         .generationConfig(PipelinePlan.GenerationConfig.builder()
                 .model(Model.GEMINI_2_5_FLASH)
             .build())
@@ -85,14 +95,22 @@ public class PipelinePlannerImpl implements PlannerService {
         .intent(intent.name())
         .query(userQuery)
         // Enable all advanced techniques for advisory queries
-        .enableStepBack(true)
-        .enableHyde(true)
-        .retrievalConfig(PipelinePlan.RetrievalConfig.builder()
-            .query(userQuery)
-            .topK(5)
-            .enableMultiQuery(true)
-            .multiQueryCount(3)
-            .build())
+            .queryProcessingConfig(
+                    PipelinePlan.QueryProcessingConfig.builder()
+                            .enableStepBack(true)
+                            .enableHyde(false)
+                            .enableMultiQuery(false)
+                            .multiQueryCount(0)
+                            .build()
+            )
+            .retrievalConfig(null
+//                    PipelinePlan.RetrievalConfig.builder()
+//                    .query(userQuery)
+//                    .topK(5)
+//                    .retrievalType(RetrievalType.CASE_STUDIES_RETRIEVE)
+//                    .build()
+            )
+            .calculationConfig(null)
         .generationConfig(PipelinePlan.GenerationConfig.builder()
                 .model(Model.GEMINI_2_5_FLASH)
             .build())
@@ -103,11 +121,19 @@ public class PipelinePlannerImpl implements PlannerService {
     return PipelinePlan.builder()
         .intent(intent.name())
         .query(userQuery)
-        .enableStepBack(false)
-        .enableHyde(false)
-        .calculationConfig(PipelinePlan.CalculationConfig.builder()
-            .expression(userQuery)
-            .build())
+            .queryProcessingConfig(null
+//                    PipelinePlan.QueryProcessingConfig.builder()
+//                            .enableStepBack(true)
+//                            .enableHyde(true)
+//                            .enableMultiQuery(true)
+//                            .multiQueryCount(3)
+//                            .build()
+            )
+        .calculationConfig(
+                PipelinePlan.CalculationConfig.builder()
+                        .isCalculationNeeded(true)
+            .build()
+        )
         .generationConfig(PipelinePlan.GenerationConfig.builder()
                 .model(Model.GEMINI_2_5_FLASH)
             .build())

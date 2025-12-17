@@ -16,5 +16,6 @@ public class RetrievalRequest {
     private Map<String, Object> filterMetadata;
     private Integer topK;
     private Boolean enableCrag;
+    private RetrievalType retrievalType;
 }
 

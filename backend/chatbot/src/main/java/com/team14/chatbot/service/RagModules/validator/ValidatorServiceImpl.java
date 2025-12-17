@@ -31,17 +31,17 @@ public class ValidatorServiceImpl implements ValidatorService {
             """;
 
     public static final String OUTPUT_VALIDATE_PROMPT = """
-Fact-check AI response against evidence. Check for hallucination, faithfulness, relevance.
-
-Context:
-{contexts}
-
-User query: "{userInput}"
-Response to validate: "{generatedOutput}"
-
-Return JSON only (raw, no markdown):
-{{"isValid": true|false, "violationType": "HALLUCINATION" | "IRRELEVANT" | null, "reason": "string", "correctedContent": "string" | null}}
-""";
+        Fact-check AI response against evidence. Check for hallucination, faithfulness, relevance.
+        
+        Context:
+        {contexts}
+        
+        User query: {userInput}
+        Response to validate: {generatedOutput}
+        
+        Return JSON only (raw, no markdown):
+        {{"isValid": true|false, "violationType": "HALLUCINATION" | "IRRELEVANT" | null, "reason": "string", "correctedContent": "string" | null}}
+        """;
 
     // --- 1. INPUT VALIDATION ---
     @Override
@@ -122,6 +122,13 @@ Return JSON only (raw, no markdown):
     @Override
     public ValidationResult validateOutput(String generatedOutput, String userInput, Map<String, String> contexts) {
         log.info("Validating Output Accuracy & Safety...");
+        generatedOutput =
+                generatedOutput
+                        .replace("\\", "\\\\")
+                        .replace("\"", "\\\"")
+                        .replace("\n", "\\n")
+                        .replace("\r", "")
+                        .replace("\t", "\\t");
 
         String contextString = contexts.entrySet().stream()
                 .map(entry -> String.format("--- %s ---\n%s", entry.getKey().toUpperCase(), entry.getValue()))
@@ -142,12 +149,12 @@ Return JSON only (raw, no markdown):
         // Note: Ensure your generationService parses the JSON string into a Map
         Map<String, Object> validationResponse = generationService.generate(
                 GenerationRequest.builder()
-                        .specificModel(Model.GEMINI_2_5_FLASH)
+                        .specificModel(Model.GEMINI_2_5_FLASH_LITE)
                         .prompt(prompt)
                         .build(),
                 Map.class);
 
-        log.info("Validation ResulASH)t: {}", validationResponse);
+        log.info("Validation Result: {}", validationResponse);
 
         // 5. Safe Parsing (Match the JSON keys from the Prompt)
         boolean isValid = Boolean.TRUE.equals(validationResponse.get("isValid"));

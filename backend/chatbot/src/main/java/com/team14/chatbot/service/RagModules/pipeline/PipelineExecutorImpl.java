@@ -6,6 +6,7 @@ import com.team14.chatbot.service.RagModules.FusionService;
 import com.team14.chatbot.service.RagModules.GenerationService;
 import com.team14.chatbot.service.RagModules.calculator.CalculationResult;
 import com.team14.chatbot.service.RagModules.PipelineExecutorService;
+import com.team14.chatbot.service.RagModules.generation.Model;
 import com.team14.chatbot.service.RagModules.query_processor.QueryProcessingService;
 import com.team14.chatbot.service.RagModules.retriever.QueryRetrievalService;
 import com.team14.chatbot.service.RagModules.retriever.RetrievalRequest;
@@ -25,6 +26,10 @@ import java.util.stream.Collectors;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.team14.chatbot.service.RagModules.query_processor.AdvisoryPlanningResult;
+import com.team14.chatbot.service.RagModules.query_processor.AdvisoryAnalysisResult;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -36,49 +41,91 @@ public class PipelineExecutorImpl implements PipelineExecutorService {
     private final FusionService fusionService;
     private final QueryRetrievalService queryRetrievalService;
     private final QueryProcessingService queryProcessingService;
+    private final ObjectMapper objectMapper;
 
     // Prompt templates
     private static final String CALCULATION_PLANNING_PROMPT = """
-            Extract mathematical expression from financial query. Return JSON with expression and reasoning steps.
+            Extract the mathematical expression from the following financial query
+            and think step by step about how to compute the answer.
 
-            Query: "{query}"
+            Query:
+            {query}
 
-            Return JSON only:
-            {"expression": "valid math expression", "reasoningSteps": ["step1", "step2"]}
+            Return JSON only with the following shape (do NOT add extra fields):
+            expression: string    // the valid math expression that can be evaluated directly
+            reasoningSteps: [string] // ordered list of short reasoning steps in English
             """;
 
     private static final String INTERPRET_CALCULATION_PROMPT = """
-            Explain calculation results using knowledge base context. Use natural, easy-to-understand language.
-
-            Query: "{query}"
-            Knowledge base:
-            {documents}
-            Calculation analysis:
-            {calculationReasoning}
-
-            Return explanation in Vietnamese only.
-            """;
-
-    private static final String SUMMARIZE_DOCS_PROMPT = """
             You are a professional financial assistant.
 
-            Your tasks:
-            - Answer the user's question using ONLY the provided knowledge base.
-            - Explain the answer clearly in simple terms.
-            - If applicable, provide one or more concrete examples to help understanding.
-            - Do NOT infer, assume, or add information that is not present in the knowledge base.
-            - If the knowledge base does not contain enough information, clearly state that you do not have sufficient data to answer.
+            Task:
+            - Based on the analysis and calculation results below, answer the user's question.
+            - Explain step by step: what is being calculated, which formula is used, how the numbers are plugged in,
+              and what the final numerical result is.
+            - Prioritize simple, intuitive explanations suitable for non‑experts in finance.
 
-            User query:
+            User question:
+            {query}
+
+            Calculation analysis and result (input for you, do NOT repeat verbatim):
+            {calculationReasoning}
+
+            Requirements:
+            - Respond in Vietnamese only.
+            - Be concrete and specific; avoid unnecessary theory.
+            - When mentioning numbers, always include appropriate units (e.g. đồng, %, tháng, ...).
+            """;
+
+    private static final String KB_EXPLANATION_PROMPT = """
+            You are a professional financial assistant.
+
+            Task:
+            - Answer the question by EXPLAINING the information in the knowledge base.
+            - Combine and interpret relevant parts of the knowledge base to form a
+              clear, step-by-step explanation.
+            - Explain concepts, rules, and implications in detail, not just definitions.
+
+            Constraints:
+            - Use ONLY the provided knowledge base.
+            - If information is missing, clearly state that.
+
+            User question:
             "{query}"
 
             Knowledge base:
             {documents}
 
+            Output:
+            - Vietnamese only.
+            - Prefer detailed, multi-paragraph explanation over brevity.
+            """;
+
+    private static final String ADVISORY_GENERATION_PROMPT = """
+            Using the advisory analysis below, generate a clear and neutral explanation
+            for a retail user.
+
             Rules:
-            - Respond in Vietnamese only.
-            - Use clear explanations.
-            - Examples must be based strictly on the knowledge base.
+            - Do NOT give direct recommendations.
+            - Explicitly mention NOT SUITABLE conditions.
+            - Reflect uncertainty if confidence_level is low.
+            - Use ONLY information from the analysis JSON.
+            - DO NOT introduce new risks, benefits, or conclusions.
+            - Use conditional language ("if", "when", "not suitable if").
+            - Avoid persuasive or directive wording.
+
+            User question:
+            {query}
+
+            Knowledge base:
+            {documents}
+
+            Advisory analysis:
+            {analysis_json}
+
+            Output:
+            - Vietnamese only.
+            - Be neutral and informative, not directive.
             """;
 
     @Override
@@ -89,23 +136,58 @@ public class PipelineExecutorImpl implements PipelineExecutorService {
             return plan.getDirectResponse();
         }
 
-        // intentPipeline: step_back + hyde + multiquery + SubQueryPipeline
+        // intentPipeline: planning (for ADVISORY) + step_back + hyde + multiquery +
+        // SubQueryPipeline
         String pipelineQuery = plan.getQuery();
         String hydeDoc = pipelineQuery;
+        List<String> queries;
+        AdvisoryAnalysisResult advisoryAnalysis = null;
 
-        if (plan.isEnableStepBack() && pipelineQuery != null) {
-            pipelineQuery = queryProcessingService.transformWithStepBack(pipelineQuery);
+        // Special combined planning for ADVISORY intent
+        if ("ADVISORY".equalsIgnoreCase(plan.getIntent()) && plan.getQueryProcessingConfig() != null) {
+            int mqCount = Math.max(1, plan.getQueryProcessingConfig().getMultiQueryCount());
+            AdvisoryPlanningResult planning = queryProcessingService.planAdvisoryQuery(pipelineQuery, mqCount);
+
+            if (planning != null) {
+                if (planning.step_back_question() != null && !planning.step_back_question().isBlank()) {
+                    pipelineQuery = planning.step_back_question().trim();
+                }
+                if (planning.hyde_document() != null && !planning.hyde_document().isBlank()) {
+                    hydeDoc = planning.hyde_document().trim();
+                }
+                if (planning.sub_queries() != null && !planning.sub_queries().isEmpty()) {
+                    queries = planning.sub_queries().stream()
+                            .filter(q -> q != null && !q.isBlank())
+                            .map(String::trim)
+                            .distinct()
+                            .toList();
+                } else {
+                    queries = List.of(pipelineQuery);
+                }
+                log.info("Advisory planning applied | pipelineQuery: {} | hydeDoc length: {} | queries: {}",
+                        pipelineQuery,
+                        hydeDoc != null ? hydeDoc.length() : 0,
+                        queries);
+            } else {
+                // Fallback to classic step_back + hyde + multi-query
+                queries = buildStandardQueries(plan.getQueryProcessingConfig(), pipelineQuery);
+            }
+
+            // Perform advisory analysis for ADVISORY intent
+            advisoryAnalysis = queryProcessingService.analyzeAdvisoryQuery(plan.getQuery());
+            if (advisoryAnalysis != null) {
+                log.info("Advisory analysis completed | advisory_type: {} | confidence_level: {}",
+                        advisoryAnalysis.advisory_type(), advisoryAnalysis.confidence_level());
+            } else {
+                log.warn("Advisory analysis returned null, proceeding without analysis");
+            }
+        } else {
+            // Non‑advisory intents use classic processing
+            queries = buildStandardQueries(plan.getQueryProcessingConfig(), pipelineQuery);
         }
-        log.info("PipelineQuery: {}", pipelineQuery);
 
-        if (plan.isEnableHyde() && pipelineQuery != null) {
-            hydeDoc = queryProcessingService.generateHypotheticalDocument(pipelineQuery);
-        }
-        log.info("HydeDoc: {}", hydeDoc);
-
-        List<String> queries = buildRetrievalQueries(plan, hydeDoc, pipelineQuery);
         log.info("Queries: {}", queries);
-        List<String> subResults = runSubQueryPipelines(plan, queries);
+        List<String> subResults = runSubQueryPipelines(plan, queries, advisoryAnalysis);
         log.info("SubResults: {}", subResults);
         if (subResults.isEmpty()) {
             return "Không có nội dung từ subquery.";
@@ -116,21 +198,15 @@ public class PipelineExecutorImpl implements PipelineExecutorService {
         return fuseSubQueryResponses(plan.getQuery(), subResults, plan);
     }
 
-    private List<String> buildRetrievalQueries(PipelinePlan plan, String hydeDoc, String pipelineQuery) {
-        if (plan.getRetrievalConfig() == null) {
+    private List<String> buildMultiQueries(PipelinePlan.QueryProcessingConfig config, String pipelineQuery) {
+        if (config == null) {
             return List.of(pipelineQuery);
         }
-        var config = plan.getRetrievalConfig();
-        String retrievalQuery = config.getQuery() != null ? config.getQuery() : hydeDoc;
-        if (retrievalQuery == null) {
-            retrievalQuery = pipelineQuery;
-        }
+
         List<String> queries = new ArrayList<>();
-        if (retrievalQuery != null && !retrievalQuery.isBlank()) {
-            queries.add(retrievalQuery.trim());
-        }
-        if (config.isEnableMultiQuery() && retrievalQuery != null && !retrievalQuery.isBlank()) {
-            List<String> expanded = queryProcessingService.expandQueryForExecutor(retrievalQuery,
+
+        if (config.isEnableMultiQuery() && pipelineQuery != null && !pipelineQuery.isBlank()) {
+            List<String> expanded = queryProcessingService.expandQueryForExecutor(pipelineQuery,
                     Math.max(3, config.getMultiQueryCount()));
             for (String q : expanded) {
                 if (q != null && !q.isBlank()) {
@@ -141,11 +217,28 @@ public class PipelineExecutorImpl implements PipelineExecutorService {
         return queries.stream().distinct().toList();
     }
 
+    private List<String> buildStandardQueries(PipelinePlan.QueryProcessingConfig config, String pipelineQuery) {
+        String effectiveQuery = pipelineQuery;
+
+        if (config != null && config.isEnableStepBack() && effectiveQuery != null) {
+            effectiveQuery = queryProcessingService.transformWithStepBack(effectiveQuery);
+        }
+        log.info("PipelineQuery (standard): {}", effectiveQuery);
+
+        if (config != null && config.isEnableHyde() && effectiveQuery != null) {
+            String hydeDoc = queryProcessingService.generateHypotheticalDocument(effectiveQuery);
+            log.info("HydeDoc (standard) length: {}", hydeDoc != null ? hydeDoc.length() : 0);
+        }
+
+        return buildMultiQueries(config, effectiveQuery);
+    }
+
     /**
      * SubQueryPipeline: mỗi sub-query chạy Retrieval -> Calculation -> Generation,
      * song song.
      */
-    private List<String> runSubQueryPipelines(PipelinePlan plan, List<String> queries) {
+    private List<String> runSubQueryPipelines(PipelinePlan plan, List<String> queries,
+            AdvisoryAnalysisResult advisoryAnalysis) {
         if (queries.isEmpty()) {
             log.warn("No queries to process in parallel");
             return List.of();
@@ -171,7 +264,7 @@ public class PipelineExecutorImpl implements PipelineExecutorService {
                     long queryStartTime = System.currentTimeMillis();
                     log.info("[SubQuery {}] Starting pipeline execution for: {}", queryIndex + 1, query);
                     try {
-                        String result = runSingleSubPipeline(plan, query, generationConfig);
+                        String result = runSingleSubPipeline(plan, query, generationConfig, advisoryAnalysis);
                         long queryDuration = System.currentTimeMillis() - queryStartTime;
                         log.info("[SubQuery {}] Completed in {}ms | Query: {} | Result length: {}",
                                 queryIndex + 1, queryDuration, query,
@@ -216,7 +309,7 @@ public class PipelineExecutorImpl implements PipelineExecutorService {
     }
 
     private String runSingleSubPipeline(PipelinePlan plan, String query,
-            PipelinePlan.GenerationConfig generationConfig) {
+            PipelinePlan.GenerationConfig generationConfig, AdvisoryAnalysisResult advisoryAnalysis) {
         StringBuilder ctx = new StringBuilder();
         StringBuilder reasoning = new StringBuilder();
         long stepStartTime;
@@ -231,7 +324,8 @@ public class PipelineExecutorImpl implements PipelineExecutorService {
                     .query(query)
                     .topK(rCfg.getTopK())
                     .build();
-            RetrievalResponse docs = queryRetrievalService.retrieveDocuments(req.getQuery(), null);
+            RetrievalResponse docs = queryRetrievalService.retrieveDocuments(req.getQuery(), rCfg.getRetrievalType(),
+                    null);
 
             long retrievalDuration = System.currentTimeMillis() - stepStartTime;
             if (!docs.getDocuments().isEmpty()) {
@@ -250,48 +344,44 @@ public class PipelineExecutorImpl implements PipelineExecutorService {
         }
 
         // Calculation
-        if (plan.getCalculationConfig() != null) {
+        if (plan.getCalculationConfig() != null && plan.getCalculationConfig().isCalculationNeeded()) {
             stepStartTime = System.currentTimeMillis();
-            var cCfg = plan.getCalculationConfig();
-            String expression = cCfg.getExpression();
-            log.debug("[SubQuery] Starting calculation step | Query: {} | Expression provided: {}",
-                    query, expression != null && !expression.isBlank());
+            log.debug("[SubQuery] Starting calculation step | Query: {}", query);
+
+            String expression = null;
 
             try {
-                // If no expression provided, try to extract it from the query
-                if (expression == null || expression.isBlank()) {
-                    log.debug("[SubQuery] No expression provided, extracting from query using LLM");
-                    long planningStartTime = System.currentTimeMillis();
+                log.debug("[SubQuery] No expression provided, extracting from query using LLM");
+                long planningStartTime = System.currentTimeMillis();
 
-                    // Create prompt for calculation planning
-                    PromptTemplate planningTemplate = new PromptTemplate(CALCULATION_PLANNING_PROMPT);
-                    Map<String, Object> planningVars = Map.of("query", query);
-                    Prompt planningPrompt = planningTemplate.create(planningVars);
+                // Create prompt for calculation planning
+                PromptTemplate planningTemplate = new PromptTemplate(CALCULATION_PLANNING_PROMPT);
+                Map<String, Object> planningVars = Map.of("query", query);
+                Prompt planningPrompt = planningTemplate.create(planningVars);
 
-                    GenerationRequest planReq = GenerationRequest.builder()
-                            .prompt(planningPrompt)
-                            .specificModel(generationConfig != null ? generationConfig.getModel() : null)
-                            .build();
+                GenerationRequest planReq = GenerationRequest.builder()
+                        .prompt(planningPrompt)
+                        .specificModel(Model.GEMINI_2_5_FLASH)
+                        .build();
 
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> analysisResult = generationService.generate(planReq, Map.class);
-                    long planningDuration = System.currentTimeMillis() - planningStartTime;
-                    log.debug("[SubQuery] Calculation planning completed in {}ms | Result: {}",
-                            planningDuration, analysisResult);
+                @SuppressWarnings("unchecked")
+                Map<String, Object> analysisResult = generationService.generate(planReq, Map.class);
+                long planningDuration = System.currentTimeMillis() - planningStartTime;
+                log.debug("[SubQuery] Calculation planning completed in {}ms | Result: {}",
+                        planningDuration, analysisResult);
 
-                    if (analysisResult != null) {
-                        String extractedExpr = (String) analysisResult.get("expression");
-                        if (extractedExpr != null && !extractedExpr.isBlank()) {
-                            expression = extractedExpr;
+                if (analysisResult != null) {
+                    String extractedExpr = (String) analysisResult.get("expression");
+                    if (extractedExpr != null && !extractedExpr.isBlank()) {
+                        expression = extractedExpr;
 
-                            // Add reasoning steps if available
-                            if (analysisResult.containsKey("reasoningSteps")) {
-                                @SuppressWarnings("unchecked")
-                                List<String> steps = (List<String>) analysisResult.get("reasoningSteps");
-                                if (steps != null && !steps.isEmpty()) {
-                                    reasoning.append("Problem analysis:\n");
-                                    reasoning.append(String.join("\n", steps)).append("\n");
-                                }
+                        // Add reasoning steps if available
+                        if (analysisResult.containsKey("reasoningSteps")) {
+                            @SuppressWarnings("unchecked")
+                            List<String> steps = (List<String>) analysisResult.get("reasoningSteps");
+                            if (steps != null && !steps.isEmpty()) {
+                                reasoning.append("Problem analysis:\n");
+                                reasoning.append(String.join("\n", steps)).append("\n");
                             }
                         }
                     }
@@ -327,13 +417,12 @@ public class PipelineExecutorImpl implements PipelineExecutorService {
                             ctx.append("=== CALCULATION ERROR ===\n");
                             ctx.append("Cannot evaluate expression: ").append(expression).append("\n\n");
                             reasoning.append("Error: Cannot evaluate expression: ").append(expression).append("\n");
-                            log.warn("[SubQuery] Calculation failed in {}ms | Expression: {}", calcDuration,
-                                    expression);
+                            log.warn("[SubQuery] Calculation failed in {}ms | Expression: {}", expression);
                         }
                     } catch (Exception e) {
                         long calcDuration = System.currentTimeMillis() - calcStartTime;
-                        log.error("[SubQuery] Calculation exception in {}ms | Expression: {}", calcDuration, expression,
-                                e);
+                        log.error("[SubQuery] Calculation exception in {}ms | Expression: {} | Duration: {}ms",
+                                expression, calcDuration, e);
                         ctx.append("=== CALCULATION EXECUTION ERROR ===\n");
                         ctx.append("Error occurred: ").append(e.getMessage()).append("\n\n");
                         reasoning.append("Error: ").append(e.getMessage()).append("\n");
@@ -370,29 +459,46 @@ public class PipelineExecutorImpl implements PipelineExecutorService {
                 log.debug("[SubQuery] Context length: {} chars", finalContext.length());
             }
 
-            // Build prompt based on whether we have calculation or not
+            // Build prompt based on whether we have calculation, advisory analysis, or
+            // standard KB
             PromptTemplate promptTemplate;
             Map<String, Object> promptVars = new HashMap<>();
             promptVars.put("query", query);
             promptVars.put("documents", finalContext);
 
             boolean hasCalculation = plan.getCalculationConfig() != null && reasoning.length() > 0;
+            boolean hasAdvisoryAnalysis = advisoryAnalysis != null && "ADVISORY".equalsIgnoreCase(plan.getIntent());
+
             if (hasCalculation) {
                 // Use INTERPRET_CALCULATION prompt
                 promptTemplate = new PromptTemplate(INTERPRET_CALCULATION_PROMPT);
                 promptVars.put("calculationReasoning", reasoning.toString());
                 log.debug("[SubQuery] Using INTERPRET_CALCULATION prompt | Reasoning length: {}", reasoning.length());
+            } else if (hasAdvisoryAnalysis) {
+                // Use ADVISORY_GENERATION prompt with analysis JSON
+                try {
+                    String analysisJson = objectMapper.writeValueAsString(advisoryAnalysis);
+                    promptTemplate = new PromptTemplate(ADVISORY_GENERATION_PROMPT);
+                    promptVars.put("analysis_json", analysisJson);
+                    log.debug("[SubQuery] Using ADVISORY_GENERATION prompt | Analysis JSON length: {}",
+                            analysisJson.length());
+                } catch (Exception e) {
+                    log.error(
+                            "[SubQuery] Failed to serialize advisory analysis to JSON, falling back to KB_EXPLANATION",
+                            e);
+                    promptTemplate = new PromptTemplate(KB_EXPLANATION_PROMPT);
+                }
             } else {
                 // Use SUMMARIZE_DOCS prompt
-                promptTemplate = new PromptTemplate(SUMMARIZE_DOCS_PROMPT);
-                log.debug("[SubQuery] Using SUMMARIZE_DOCS prompt");
+                promptTemplate = new PromptTemplate(KB_EXPLANATION_PROMPT);
+                log.debug("[SubQuery] Using KB_EXPLANATION prompt");
             }
 
             Prompt prompt = promptTemplate.create(promptVars);
 
             GenerationRequest genReq = GenerationRequest.builder()
                     .prompt(prompt)
-                    .specificModel(generationConfig.getModel())
+                    .specificModel(Model.GEMINI_2_5_FLASH)
                     .temperature(generationConfig.getTemperature())
                     .build();
 

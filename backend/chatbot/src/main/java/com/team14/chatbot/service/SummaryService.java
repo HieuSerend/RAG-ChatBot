@@ -37,7 +37,7 @@ public class SummaryService {
     private final ConversationSummaryRepository summaryRepository;
 
     public SummaryService(
-            @Qualifier("llamaCollabClient") ChatClient chatClient,
+            @Qualifier("geminiFlashLiteClient") ChatClient chatClient,
             MessageRepository messageRepository,
             ConversationSummaryRepository summaryRepository) {
         this.chatClient = chatClient;
@@ -48,6 +48,7 @@ public class SummaryService {
     @Async
     public void updateSummaryAsync(String conversationId) {
         try {
+            log.info("Update Summary async ...");
             // Get recent messages (last 5)
             List<Message> recentMessages = messageRepository
                     .findRecentByConversationId(conversationId, PageRequest.of(0, RECENT_MESSAGES_LIMIT));
@@ -93,6 +94,7 @@ public class SummaryService {
                             .build());
 
             summaryRepository.save(summary);
+            log.info("Updated summary successfully");
 
         } catch (Exception e) {
             log.error("Error updating summary for conversation: " + conversationId, e);

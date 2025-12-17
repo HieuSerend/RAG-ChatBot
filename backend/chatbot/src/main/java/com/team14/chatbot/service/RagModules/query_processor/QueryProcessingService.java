@@ -28,34 +28,39 @@ import java.util.List;
 public class QueryProcessingService {
 
     ChatClient chatClient;
+    ChatClient geminiFlashClient;
     ObjectMapper objectMapper;
 
-    public QueryProcessingService(@Qualifier("llamaCollabClient") ChatClient chatClient, ObjectMapper objectMapper) {
+    public QueryProcessingService(
+            @Qualifier("geminiFlashLiteClient") ChatClient chatClient,
+            @Qualifier("geminiFlashClient") ChatClient geminiFlashClient,
+            ObjectMapper objectMapper) {
         this.chatClient = chatClient;
-        this.objectMapper = new ObjectMapper();
+        this.geminiFlashClient = geminiFlashClient;
+        this.objectMapper = objectMapper;
     }
 
     // ==================== PROMPTS ====================
 
     private static final String QUERY_ROUTING_PROMPT = """
-        Classify user query intent in the financial domain. A query may have multiple intents.
-        
-        Query: "%s"
-        
-        Valid intents:
-        Financial:
-        - KNOWLEDGE_QUERY: Ask for definitions or factual financial information.
-        - ADVISORY: Ask for advice, recommendations, or opinions on financial decisions.
-        - CALCULATION: Ask to calculate or compute financial values.
-        - UNSUPPORTED: Financial-related but unclear, incomplete, or out of scope.
-        
-        Non-financial:
-        - MALICIOUS_CONTENT: Illegal, fraudulent, or harmful financial requests.
-        - NON_FINANCIAL: Not related to finance.
-        
-        Return JSON array only (no markdown):
-        [{"intent":"INTENT","query":"QUERY","explanation":"SHORT_REASON"}]
-        """;
+            Classify user query intent in the financial domain. A query may have multiple intents.
+
+            Query: "%s"
+
+            Valid intents:
+            Financial:
+            - KNOWLEDGE_QUERY: Ask for definitions or factual financial information.
+            - ADVISORY: Ask for advice, recommendations, or opinions on financial decisions.
+            - CALCULATION: Ask to calculate or compute financial values.
+            - UNSUPPORTED: Financial-related but unclear, incomplete, or out of scope.
+
+            Non-financial:
+            - MALICIOUS_CONTENT: Illegal, fraudulent, or harmful financial requests.
+            - NON_FINANCIAL: Not related to finance.
+
+            Return JSON array only (no markdown):
+            [{"intent":"INTENT","query":"QUERY","explanation":"SHORT_REASON"}]
+            """;
 
     private static final String STEP_BACK_PROMPT = """
             Apply step-back reasoning: analyze the underlying concept and rewrite as a clearer, more specific question.
@@ -79,6 +84,65 @@ public class QueryProcessingService {
             Original: "%s"
 
             Return numbered list (1., 2., 3...) in Vietnamese, queries only, no explanation.
+            """;
+
+    private static final String ADVISORY_PLANNING_PROMPT = """
+            You are a senior financial assistant.
+
+            Your task is to deeply analyze the following user query and prepare
+            everything needed for a high‑quality advisory answer in a RAG pipeline.
+
+            User query:
+            %s
+
+            You MUST perform internally (do NOT explain these steps in the output):
+            1) Step‑back reasoning: rewrite the query into a clearer, more general question
+               that captures the core financial problem.
+            2) HyDE: imagine a short hypothetical document (3‑8 Vietnamese sentences)
+               that would perfectly answer this query.
+            3) Multi‑query expansion: generate exactly %d Vietnamese search sub‑queries
+               that cover different angles/keywords of the same problem.
+
+            Return a SINGLE JSON object only (no markdown, no comments, no extra text)
+            with the following fields:
+            - step_back_question: string          // rewritten question (in Vietnamese)
+            - hyde_document: string              // hypothetical answer document (in Vietnamese)
+            - sub_queries: [string]              // list of exactly %d Vietnamese search queries
+            """;
+
+    private static final String ADVISORY_ANALYSIS_PROMPT = """
+            You are a senior financial expert. Analyze the following advisory query and provide a comprehensive structured analysis.
+
+            User query:
+            %s
+
+            Return a SINGLE JSON object only (no markdown, no comments, no extra text) with the following structure:
+            {
+              "advisory_type": "string - type of advisory (e.g., investment, savings, loan, insurance, etc.)",
+              "assumed_persona": "string - assumed user profile/persona based on the query",
+              "knowledge_level": "string - assumed financial knowledge level (beginner, intermediate, advanced)",
+              "primary_objective": "string - main objective/goal of the user",
+              "time_horizon": "string - time horizon for the advisory (short-term, medium-term, long-term)",
+              "risk_tolerance": "string - assumed risk tolerance level (conservative, moderate, aggressive)",
+              "key_risks": [
+                {
+                  "risk": "string - description of the risk",
+                  "severity": "low | medium | high",
+                  "description": "string - detailed description of the risk",
+                  "evidence_refs": ["string"] // optional references to evidence
+                }
+              ],
+              "potential_benefits": [
+                {
+                  "benefit": "string - description of the benefit",
+                  "conditions": "string - conditions under which this benefit applies"
+                }
+              ],
+              "suitable_when": ["string - conditions when this is suitable"],
+              "not_suitable_when": ["string - conditions when this is NOT suitable"],
+              "confidence_level": "low | medium | high",
+              "regulatory_sensitivity": true | false
+            }
             """;
 
     /**
@@ -134,7 +198,7 @@ public class QueryProcessingService {
      * underlying concept.
      */
     public String transformWithStepBack(String query) {
-        log.debug("Applying step-back prompting to: {}", query);
+        log.info("Applying step-back prompting to: {}", query);
 
         String prompt = String.format(STEP_BACK_PROMPT, query);
 
@@ -157,7 +221,7 @@ public class QueryProcessingService {
      * semantic search.
      */
     public String generateHypotheticalDocument(String query) {
-        log.debug("Generating hypothetical document for: {}", query);
+        log.info("Generating hypothetical document for: {}", query);
 
         String prompt = String.format(HYDE_PROMPT, query);
 
@@ -181,7 +245,7 @@ public class QueryProcessingService {
      * Each variation emphasizes different aspects or uses alternative keywords.
      */
     public List<String> expandQueryForExecutor(String query, int count) {
-        log.debug("Expanding query: {} into {} variations", query, count);
+        log.info("Expanding query: {} into {} variations", query, count);
 
         String prompt = String.format(MULTI_QUERY_PROMPT, count, query);
 
@@ -218,6 +282,84 @@ public class QueryProcessingService {
         }
 
         return queries;
+    }
+
+    // ==================== STAGE 2.5: ADVISORY PLANNING (COMBINED)
+    // ====================
+
+    /**
+     * For ADVISORY intent, run a single planning prompt that performs:
+     * - Step-back rewriting
+     * - HyDE hypothetical document generation
+     * - Multi-query expansion
+     * and returns all data in one JSON object.
+     */
+    public AdvisoryPlanningResult planAdvisoryQuery(String query, int multiQueryCount) {
+        log.info("Planning advisory query for: {} | multiQueryCount={}", query, multiQueryCount);
+
+        int safeCount = Math.max(1, multiQueryCount);
+        String prompt = String.format(ADVISORY_PLANNING_PROMPT, query, safeCount, safeCount);
+
+        try {
+            String response = geminiFlashClient.prompt()
+                    .user(prompt)
+                    .call()
+                    .content();
+
+            String cleanResponse = response.trim()
+                    .replace("```json", "")
+                    .replace("```", "")
+                    .trim();
+
+            if (cleanResponse.isEmpty()) {
+                log.warn("Advisory planning returned empty response, falling back to null");
+                return null;
+            }
+
+            AdvisoryPlanningResult result = objectMapper.readValue(cleanResponse, AdvisoryPlanningResult.class);
+            log.debug("Advisory planning result: {}", result);
+            return result;
+        } catch (Exception e) {
+            log.error("Error in advisory planning, falling back to classic processing", e);
+            return null;
+        }
+    }
+
+    // ==================== ADVISORY ANALYSIS ====================
+
+    /**
+     * Analyzes an advisory query as a financial expert and returns structured
+     * analysis.
+     * This analysis will be used to generate a neutral, informative response.
+     */
+    public AdvisoryAnalysisResult analyzeAdvisoryQuery(String query) {
+        log.info("Analyzing advisory query: {}", query);
+
+        String prompt = String.format(ADVISORY_ANALYSIS_PROMPT, query);
+
+        try {
+            String response = geminiFlashClient.prompt()
+                    .user(prompt)
+                    .call()
+                    .content();
+
+            String cleanResponse = response.trim()
+                    .replace("```json", "")
+                    .replace("```", "")
+                    .trim();
+
+            if (cleanResponse.isEmpty()) {
+                log.warn("Advisory analysis returned empty response, falling back to null");
+                return null;
+            }
+
+            AdvisoryAnalysisResult result = objectMapper.readValue(cleanResponse, AdvisoryAnalysisResult.class);
+            log.debug("Advisory analysis result: {}", result);
+            return result;
+        } catch (Exception e) {
+            log.error("Error in advisory analysis, falling back to null", e);
+            return null;
+        }
     }
 
 }

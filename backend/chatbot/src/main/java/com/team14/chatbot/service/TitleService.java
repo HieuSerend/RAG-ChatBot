@@ -16,7 +16,7 @@ public class TitleService {
 
     public TitleService(
             ConversationRepository conversationRepository,
-            @Qualifier("llamaCollabClient") ChatClient chatClient
+            @Qualifier("geminiFlashLiteClient") ChatClient chatClient
     ) {
         this.conversationRepository = conversationRepository;
         this.chatClient = chatClient;

@@ -36,15 +36,17 @@ public class QueryRetrievalService implements RetrievalService {
 
     /**
      * Main retrieval method - full pipeline
-     * @param query The search query
+     * 
+     * @param query          The search query
      * @param filterMetadata Optional metadata filters
      * @return RetrievalResponse with documents
      */
     @Override
-    public RetrievalResponse retrieveDocuments(String query, Map<String, Object> filterMetadata) {
+    public RetrievalResponse retrieveDocuments(String query, RetrievalType retrievalType,
+            Map<String, Object> filterMetadata) {
 
         // Step 1: Hybrid Search → Top 50 candidates
-        List<Document> hybridResults = hybridSearchService.hybridSearch(query, hybridTopK);
+        List<Document> hybridResults = hybridSearchService.hybridSearch(query, retrievalType, hybridTopK);
         log.info("Hybrid search returned {} documents", hybridResults.size());
 
         // Step 2: Metadata Filter
@@ -78,22 +80,22 @@ public class QueryRetrievalService implements RetrievalService {
                 .build();
     }
 
-
-
     /**
      * Retrieve documents with CRAG evaluation
+     * 
      * @param query The search query
      * @return RetrievalResponse with documents and CRAG evaluation
      */
     public RetrievalResponse retrieveWithCrag(String query) {
-        return retrieveDocuments(query, null, true, 0);
+        return retrieveDocuments(query, null, null, true, 0);
     }
 
     /**
      * Internal retrieval method with depth tracking for recursive calls
      */
-    private RetrievalResponse retrieveDocuments(String query, Map<String, Object> filterMetadata, 
-                                                 boolean useCrag, int depth) {
+    private RetrievalResponse retrieveDocuments(String query, Map<String, Object> filterMetadata,
+            RetrievalType retrievalType,
+            boolean useCrag, int depth) {
         if (depth > maxDepth) {
             log.warn("Max depth reached for retrieval, returning empty results");
             return RetrievalResponse.builder()
@@ -106,7 +108,7 @@ public class QueryRetrievalService implements RetrievalService {
         log.info("Retrieval pipeline - Step 1: Hybrid Search (depth={})", depth);
 
         // Step 1: Hybrid Search → Top 50 candidates
-        List<Document> hybridResults = hybridSearchService.hybridSearch(query, hybridTopK);
+        List<Document> hybridResults = hybridSearchService.hybridSearch(query, retrievalType, hybridTopK);
         log.info("Hybrid search returned {} documents", hybridResults.size());
 
         // Step 2: Metadata Filter
@@ -132,14 +134,14 @@ public class QueryRetrievalService implements RetrievalService {
 
         if (useCrag && !rerankedResults.isEmpty()) {
             log.info("Retrieval pipeline - Step 4: CRAG Evaluation");
-            
+
             // Take top 5 for CRAG evaluation
             List<Document> top5ForCrag = rerankedResults.stream()
                     .limit(finalTopK)
                     .toList();
 
             cragEvaluation = cragService.evaluateDocuments(query, top5ForCrag);
-            log.info("CRAG evaluation: quality={}, action={}", 
+            log.info("CRAG evaluation: quality={}, action={}",
                     cragEvaluation.getQuality(), cragEvaluation.getAction());
 
             // Handle CRAG decision
@@ -162,8 +164,8 @@ public class QueryRetrievalService implements RetrievalService {
     /**
      * Handle CRAG decision and return appropriate documents
      */
-    private List<Document> handleCragDecision(String query, CragEvaluation evaluation, 
-                                               List<Document> documents, int depth) {
+    private List<Document> handleCragDecision(String query, CragEvaluation evaluation,
+            List<Document> documents, int depth) {
         return switch (evaluation.getQuality()) {
             case GOOD -> {
                 // Send to generation
@@ -178,11 +180,11 @@ public class QueryRetrievalService implements RetrievalService {
                     // Generate query from ambiguous document
                     newQuery = generateQueryFromDocument(query, documents.get(0));
                 }
-                
+
                 // Recursive retrieval with new query
                 RetrievalResponse recursiveResponse = retrieveDocuments(
-                        newQuery, null, true, depth + 1);
-                
+                        newQuery, null, null, true, depth + 1);
+
                 // Combine original and new results
                 List<Document> combined = new ArrayList<>(documents);
                 combined.addAll(recursiveResponse.getDocuments());
@@ -206,36 +208,37 @@ public class QueryRetrievalService implements RetrievalService {
         // Simple heuristic: combine original query with key terms from document
         String docText = document.getText();
         // Extract first sentence or key phrase
-        String keyPhrase = docText.length() > 100 
-                ? docText.substring(0, 100) 
+        String keyPhrase = docText.length() > 100
+                ? docText.substring(0, 100)
                 : docText;
-        
+
         return originalQuery + " " + keyPhrase;
     }
 
     /**
      * Active retrieval when CRAG identifies ambiguous documents
-     * @param query Original query
+     * 
+     * @param query        Original query
      * @param ambiguousDoc The ambiguous document
      * @return New retrieval results
      */
     public RetrievalResponse activeRetrieval(String query, Document ambiguousDoc) {
         log.info("Performing active retrieval for ambiguous document");
-        
+
         // Generate new query from ambiguous document
         String newQuery = generateQueryFromDocument(query, ambiguousDoc);
-        
+
         // Perform retrieval with new query
-        return retrieveDocuments(newQuery, null, true, 0);
+        return retrieveDocuments(newQuery, null, null, true, 0);
     }
 
     /**
      * Simple retrieval without CRAG (for backward compatibility)
      */
     public List<Document> simpleRetrieve(String query, int topK) {
-        List<Document> hybridResults = hybridSearchService.hybridSearch(query, topK);
+        List<Document> hybridResults = hybridSearchService.hybridSearch(query, null, topK);
         List<Document> filteredResults = metadataFilterService.filterDocuments(hybridResults, null);
-        
+
         if (filteredResults.size() > rerankTopK) {
             List<Document> top30 = filteredResults.stream()
                     .limit(rerankTopK)
@@ -246,4 +249,3 @@ public class QueryRetrievalService implements RetrievalService {
         }
     }
 }
-
