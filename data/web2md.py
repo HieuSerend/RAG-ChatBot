@@ -3,9 +3,16 @@ from bs4 import BeautifulSoup, NavigableString, Tag
 import time
 import re
 import os
+from dotenv import load_dotenv
 
-BASE = "https://www.investopedia.com"
-START_URL = "https://www.investopedia.com/financial-term-dictionary-4769738"
+# --- CẤU HÌNH ---
+load_dotenv(dotenv_path="env")
+
+BASE = os.getenv("BASE_URL", "https://www.investopedia.com")
+START_URL = os.getenv("START_URL", "https://www.investopedia.com/financial-term-dictionary-4769738")
+USER_AGENT = os.getenv("USER_AGENT", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+DATA_DIR = os.getenv("DATA_DIR", "investopedia_terms")
+
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
@@ -93,7 +100,7 @@ def html_table_to_md(table_tag):
 # 3) TẠO FOLDER OUTPUT
 # ============================================================
 
-os.makedirs("investopedia_terms", exist_ok=True)
+os.makedirs(DATA_DIR, exist_ok=True)
 
 
 # ============================================================
@@ -139,7 +146,7 @@ for idx, (term, link) in enumerate(links, 1):
         md = html_to_markdown(content)
 
         slug = slugify(term)
-        filename = f"investopedia_terms/{slug}.md"
+        filename = f"{DATA_DIR}/{slug}.md"
 
         with open(filename, "w", encoding="utf-8") as f:
             f.write(f"# {term}\n\n")

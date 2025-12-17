@@ -15,18 +15,17 @@ from langchain_core.embeddings import Embeddings  # Import base class
 from langchain_postgres import PGVector
 
 # --- 1. CẤU HÌNH ---
-load_dotenv()
+load_dotenv(dotenv_path="env")
 
-# ⚠️ QUAN TRỌNG: Thay link Ngrok của bạn vào đây
-# Link phải có dạng: https://xxxx-xxxx.ngrok-free.app/embed_batch
-COLAB_API_URL = "https://domelike-ora-gorgedly.ngrok-free.dev/embed_batch"
-
-DB_CONNECTION = os.getenv("CONNECTION_STRING")
-DB_COLLECTION_NAME = os.getenv("COLLECTION_NAME")
-DATA_DIR = "investopedia_terms"
+COLAB_API_URL = os.getenv("COLAB_API_URL", "https://unapprovable-bryon-subpeltately.ngrok-free.dev/embed_batch")
+DB_CONNECTION = os.getenv("CONNECTION_STRING", "postgresql+psycopg://postgres:password@localhost:5433/rag_chatbot")
+DB_COLLECTION_NAME = os.getenv("COLLECTION_NAME", "gemini_knowledge_base")
+DATA_DIR = os.getenv("DATA_DIR", "investopedia_terms")
 
 if not DB_CONNECTION or not DB_COLLECTION_NAME:
-    raise ValueError("❌ Lỗi cấu hình: Kiểm tra file .env")
+    raise ValueError("❌ Lỗi cấu hình: Kiểm tra file env - thiếu CONNECTION_STRING hoặc COLLECTION_NAME")
+if not COLAB_API_URL:
+    raise ValueError("❌ Lỗi cấu hình: Kiểm tra file env - thiếu COLAB_API_URL")
 
 engine = create_engine(DB_CONNECTION)
 
@@ -246,8 +245,8 @@ if __name__ == "__main__":
     init_db()
 
     # Kiểm tra URL trước khi chạy
-    if "ngrok-free.dev" not in COLAB_API_URL:
-        print("⛔ LỖI: Bạn chưa dán link Ngrok vào biến COLAB_API_URL!")
+    if not COLAB_API_URL or "ngrok-free.dev" not in COLAB_API_URL:
+        print("⛔ LỖI: Bạn chưa cấu hình COLAB_API_URL trong file env!")
     else:
         final_parents, final_children = load_and_process_folder(DATA_DIR)
         if final_parents and final_children:

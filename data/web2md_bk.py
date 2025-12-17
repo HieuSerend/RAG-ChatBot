@@ -4,9 +4,14 @@ import time
 import re
 import os
 import random # <--- Thêm random để delay tự nhiên
+from dotenv import load_dotenv
 
-BASE = "https://www.investopedia.com"
-START_URL = "https://www.investopedia.com/financial-term-dictionary-4769738"
+# --- CẤU HÌNH ---
+load_dotenv(dotenv_path="env")
+
+BASE = os.getenv("BASE_URL", "https://www.investopedia.com")
+START_URL = os.getenv("START_URL", "https://www.investopedia.com/financial-term-dictionary-4769738")
+DATA_DIR = os.getenv("DATA_DIR", "investopedia_terms")
 
 # ============================================================
 # 1) CLEAN FILE NAME
@@ -73,7 +78,7 @@ def html_table_to_md(table_tag):
 # 3) TẠO FOLDER OUTPUT
 # ============================================================
 
-os.makedirs("investopedia_terms", exist_ok=True)
+os.makedirs(DATA_DIR, exist_ok=True)
 
 # ============================================================
 # 4) LẤY LIST TERM (ĐÃ SỬA LỖI 403 VÀ SELECTOR)
@@ -124,7 +129,7 @@ session = requests.Session()
 
 for idx, (term, link) in enumerate(links, 1):
     slug = slugify(term)
-    filename = f"investopedia_terms/{slug}.md"
+    filename = f"{DATA_DIR}/{slug}.md"
     
     # Kiểm tra file tồn tại để resume nếu bị ngắt
     if os.path.exists(filename):
