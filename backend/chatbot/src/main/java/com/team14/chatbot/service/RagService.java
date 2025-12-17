@@ -1,109 +1,125 @@
 package com.team14.chatbot.service;
 
-
-import com.google.genai.Chat;
-import com.team14.chatbot.dto.response.ChatResponse;
+import com.team14.chatbot.service.RagModules.generation.Model;
+import com.team14.chatbot.service.RagModules.pipeline.PipelinePlan;
+import com.team14.chatbot.enums.QueryIntent;
+import com.team14.chatbot.service.RagModules.FusionService;
+import com.team14.chatbot.service.RagModules.PipelineExecutorService;
+import com.team14.chatbot.service.RagModules.PlannerService;
+import com.team14.chatbot.service.RagModules.ValidatorService;
+import com.team14.chatbot.service.RagModules.query_processor.QueryProcessingService;
+import com.team14.chatbot.service.RagModules.query_processor.IntentTask;
+import com.team14.chatbot.service.RagModules.validator.ValidationResult;
 import lombok.RequiredArgsConstructor;
-import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.messages.Message;
-import org.springframework.ai.chat.messages.UserMessage;
-import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.ai.chat.prompt.SystemPromptTemplate;
-import org.springframework.ai.document.Document;
-import org.springframework.ai.vectorstore.SearchRequest;
-import org.springframework.ai.vectorstore.VectorStore;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class RagService {
 
-    private final ChatClient chatClient;
-    private final VectorStore vectorStore;
-    private final QueryRetrievalService queryRetrievalService;
+    private final PipelineExecutorService pipelineExecutor;
+    private final QueryProcessingService queryProcessor;
+    private final PlannerService planner;
+    private final FusionService fusionService;
+    private final ValidatorService validatorService;
 
-    private static final int K_TOKENS = 3;
+    public String generate(String userQuery, String conversationHistory) {
+        log.info(">>> NEW REQUEST: {}", userQuery);
 
-    private static final String RAG_PROMPT_TEMPLATE = """
-        Bạn là một trợ lý ảo hỗ trợ nhóm 14 trong môn Các Chuyên Đề trong Khoa Học Máy Tính, chuyên sâu về LLM (Large Language Models).  
-        Nhiệm vụ của bạn là trả lời các câu hỏi liên quan đến dự án bài tập lớn dựa trên thông tin được cung cấp.  
-        
-        Hãy tuân theo các hướng dẫn sau:  
-        1. Trả lời rõ ràng, chính xác, phù hợp với trình độ sinh viên.  
-        2. Chỉ sử dụng thông tin liên quan đến CONTEXT, không suy đoán hay thêm thông tin quá nằm ngoài CONTEXT.  
-        3. Nếu CONTEXT không đủ để trả lời, hãy nói rõ: "Tôi không có đủ thông tin để trả lời câu hỏi này."  
-        4. Nếu câu trả lời gồm nhiều ý, hãy liệt kê theo đầu dòng để dễ đọc.  
-        5. Giải thích các thuật ngữ chuyên môn nếu có thể, để sinh viên dễ hiểu.  
-        
-        CONTEXT:
-        {context}
-        
-        Vui lòng trả lời câu hỏi sau của user dựa vào thông tin trên:
-        """;
-
-
-    public ChatResponse generateResponse(String userQuery) {
-        // Use QueryRetrievalService for advanced retrieval pipeline
-        com.team14.chatbot.dto.response.RetrievalResponse retrievalResponse = 
-                queryRetrievalService.retrieveWithCrag(userQuery);
-        
-        List<Document> similarDocuments = retrievalResponse.getDocuments();
-        
-        // Handle CRAG evaluation result
-        if (retrievalResponse.getCragEvaluation() != null) {
-            com.team14.chatbot.dto.response.CragEvaluation crag = retrievalResponse.getCragEvaluation();
-            System.out.println(">>> CRAG Evaluation: " + crag.getQuality() + " - " + crag.getAction());
-            
-            // If CRAG says documents are BAD, return message indicating no information found
-            if (crag.getQuality() == com.team14.chatbot.dto.response.CragEvaluation.DocumentQuality.BAD) {
-                return ChatResponse.builder()
-                        .answer("Tôi không tìm thấy thông tin liên quan đến câu hỏi của bạn trong cơ sở dữ liệu.")
-                        .build();
-            }
+        // B0: validate input
+        ValidationResult inputValidation = validatorService.validateInput(userQuery);
+        if (!inputValidation.isValid()) {
+            return "Yêu cầu không hợp lệ: " + inputValidation.getReason();
         }
 
-        System.out.println(">>> Similar documents: " + similarDocuments.size());
+        // B1: phân loại intent
+        List<IntentTask> tasks = queryProcessor.analyzeIntent(userQuery, conversationHistory);
+        if (tasks.stream().anyMatch(intentTask -> intentTask.intent() == QueryIntent.MALICIOUS_CONTENT)) {
+            return "Phát hiện nội dung độc hại, vui lòng đặt lại câu hỏi khác.";
+        }
 
-        String context = similarDocuments.stream()
-                .map(Document::getText)
-                .collect(Collectors.joining("\n---\n"));
+        log.info("Intents: {}", tasks.stream().map(IntentTask::intent));
 
-        context = """
-        Nhóm 14 đang làm dự án môn học về LLM (Large Language Models).
-        ---
-        Dự án là một chatbot, sử dụng các công nghệ: Frontend React, Backend Java Spring Boot, Database PostgreSQL.
-        ---
-        Nhóm gồm 5 thành viên.
-        ---
-        Các thành viên gồm: Đạt, Đông, Lê Hiếu, Đào Hiếu, Huy
-        ---
-        Dự án đang triển khai sprint Core RAG Chatbot
-        """;
+        // B3: tạo plan cho intent (hiện tại 1 intent; có thể mở rộng multi-intent sau)
+        List<PipelinePlan> plans = planner.createPlans(tasks);
+        log.info("Plans: {}", plans);
 
+        // B4: thực thi song song từng intent pipeline
+        try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+            List<Future<String>> futures = plans.stream()
+                    .map(p -> executor.submit(() -> pipelineExecutor.execute(p)))
+                    .toList();
+            List<String> responses = new ArrayList<>();
+            for (Future<String> f : futures) {
+                try {
+                    String r = f.get();
+                    if (r != null && !r.isBlank()) {
+                        responses.add(r);
+                    }
+                } catch (Exception e) {
+                    log.error("Intent pipeline failed", e);
+                }
+            }
 
-        SystemPromptTemplate systemPromptTemplate = new SystemPromptTemplate(RAG_PROMPT_TEMPLATE);
-
-        Message systemMessage = systemPromptTemplate.createMessage(
-                Map.of("context", context
-                )
-        );
-
-        Message userMessage = new UserMessage(userQuery);
-
-        Prompt prompt = new Prompt(List.of(systemMessage, userMessage));
-
-//        System.out.println(">>> System Message: " + systemMessage.getText());
-        System.out.println(">>> User Message: " + userMessage.getText());
-        System.out.println(">>> Prompt: " + prompt.getContents());
-
-        return ChatResponse.builder()
-                .answer(chatClient.prompt(prompt).call().content())
-                .build();
+            if (responses.isEmpty())
+                return "Không có phản hồi từ các pipeline.";
+            String fusedAns = responses.size() == 1
+                    ? responses.get(0)
+                    : fusionService.fuse(userQuery, responses, Model.GEMINI_2_5_FLASH);
+            return validateAndRecover(fusedAns, userQuery, responses, tasks.stream().map(IntentTask::intent).toList());
+        } catch (Exception e) {
+            log.error("Pipeline execution failed", e);
+            return "Xin lỗi, hệ thống gặp lỗi khi xử lý yêu cầu.";
+        }
     }
 
+    /**
+     * Validate fused output; if fail, self-correct once, then retry regenerate
+     * twice, else fallback.
+     */
+    private String validateAndRecover(String fused, String originalQuery, List<String> parts,
+            List<QueryIntent> intents) {
+        boolean hasCoreIntent = intents.stream().anyMatch(intent -> intent == QueryIntent.KNOWLEDGE_QUERY
+                || intent == QueryIntent.ADVISORY
+                || intent == QueryIntent.CALCULATION);
+
+        if (!hasCoreIntent) {
+            return fused;
+        }
+
+        Map<String, String> emptyContexts = new HashMap<>();
+        ValidationResult vr = validatorService.validateOutput(fused, originalQuery, emptyContexts);
+        if (vr.isValid())
+            return fused;
+
+        // Self-correct once
+        String candidate = regenerateFusion(originalQuery, parts, "self-correct", vr.getReason());
+        vr = validatorService.validateOutput(candidate, originalQuery, emptyContexts);
+        if (vr.isValid())
+            return candidate;
+
+        // Retry regenerate up to 2 times
+        for (int i = 1; i <= 2; i++) {
+            candidate = regenerateFusion(originalQuery, parts, "retry_" + i, vr.getReason());
+            vr = validatorService.validateOutput(candidate, originalQuery, emptyContexts);
+            if (vr.isValid())
+                return candidate;
+        }
+
+        return candidate;
+    }
+
+    private String regenerateFusion(String originalQuery, List<String> parts, String mode, String validatorReason) {
+        return fusionService.fuseWithCorrection(originalQuery, parts, validatorReason, mode, Model.GEMINI_2_5_FLASH);
+    }
 
 }

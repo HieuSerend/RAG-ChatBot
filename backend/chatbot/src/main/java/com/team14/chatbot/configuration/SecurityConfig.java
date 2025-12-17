@@ -14,8 +14,11 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
+
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -42,10 +45,32 @@ public class SecurityConfig {
                         .decoder(customJwtDecoder)
                         .jwtAuthenticationConverter(jwtAuthenticationConverter()))
                 .authenticationEntryPoint(new JwtAuthenticationEntryPoint()));
+// --- THAY ĐỔI QUAN TRỌNG Ở ĐÂY ---
+        // Kích hoạt CORS trong Spring Security và trỏ tới Bean cấu hình bên dưới
+        httpSecurity.cors(cors -> cors.configurationSource(corsConfigurationSource()));
 
         httpSecurity.csrf(AbstractHttpConfigurer::disable);
+//        httpSecurity.csrf(AbstractHttpConfigurer::disable);
 
         return httpSecurity.build();
+    }
+
+    // Đổi tên Bean và kiểu trả về từ CorsFilter -> CorsConfigurationSource
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration corsConfiguration = new CorsConfiguration();
+
+        // Dùng setAllowedOriginPatterns("*") thay vì addAllowedOrigin("*")
+        // để an toàn hơn và tránh lỗi nếu sau này bạn bật credentials
+        corsConfiguration.setAllowedOriginPatterns(List.of("*"));
+        corsConfiguration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        corsConfiguration.setAllowedHeaders(List.of("*"));
+        corsConfiguration.setAllowCredentials(true); // Thường frontend sẽ cần cái này true
+
+        UrlBasedCorsConfigurationSource urlBasedCorsConfigurationSource = new UrlBasedCorsConfigurationSource();
+        urlBasedCorsConfigurationSource.registerCorsConfiguration("/**", corsConfiguration);
+
+        return urlBasedCorsConfigurationSource;
     }
 
     @Bean
@@ -61,6 +86,7 @@ public class SecurityConfig {
 
         return new CorsFilter(urlBasedCorsConfigurationSource);
     }
+
 
     @Bean
     JwtAuthenticationConverter jwtAuthenticationConverter() {

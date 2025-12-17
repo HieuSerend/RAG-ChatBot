@@ -10,23 +10,27 @@ import org.springframework.stereotype.Component;
 public class VectorStoreChecker implements CommandLineRunner {
 
     private final JdbcTemplate jdbcTemplate;
-    private final VectorStore knowledgeBaseVectorStore;
+    private final VectorStore knowledgeVectorStore;
+    private final VectorStore caseStudiesVectorStore;
     private final VectorStore chatMemoryVectorStore;
 
     public VectorStoreChecker(
             JdbcTemplate jdbcTemplate,
-            @Qualifier("knowledgeBaseVectorStore") VectorStore knowledgeBaseVectorStore,
+            @Qualifier("knowledgeVectorStore") VectorStore knowledgeVectorStore,
+            @Qualifier("caseStudiesVectorStore") VectorStore caseStudiesVectorStore,
             @Qualifier("chatMemoryVectorStore") VectorStore chatMemoryVectorStore
     ) {
         this.jdbcTemplate = jdbcTemplate;
-        this.knowledgeBaseVectorStore = knowledgeBaseVectorStore;
+        this.knowledgeVectorStore = knowledgeVectorStore;
+        this.caseStudiesVectorStore = caseStudiesVectorStore;
         this.chatMemoryVectorStore = chatMemoryVectorStore;
     }
 
     @Override
     public void run(String... args) {
         System.out.println("🧠 Checking VectorStore connections...");
-        checkTable("kb_embeddings", knowledgeBaseVectorStore);
+        checkTable("knowledge_embedding_view", knowledgeVectorStore);
+        checkTable("case_studies_embedding_view", caseStudiesVectorStore);
         checkTable("chat_memory_embeddings", chatMemoryVectorStore);
         System.out.println("✅ VectorStore health check completed.");
     }

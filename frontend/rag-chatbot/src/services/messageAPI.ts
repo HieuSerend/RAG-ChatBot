@@ -21,7 +21,13 @@ export const createMessage = async (
   conversationId: string,
   text: string,
 ): Promise<Message> => {
-  const response = await api.post("/message/create", { conversationId, text });
+  const response = await api.post(
+    "/message/create-new",
+    { conversationId, text },
+    {
+      timeout: 60_000, // 60 giây
+    }
+  );
   return response.data.data;
 };
 

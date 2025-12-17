@@ -4,14 +4,23 @@ import com.team14.chatbot.entity.Conversation;
 import com.team14.chatbot.repository.ConversationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 @Service
-@RequiredArgsConstructor
+//@RequiredArgsConstructor
 public class TitleService {
 
     private final ConversationRepository conversationRepository;
     private final ChatClient chatClient;
+
+    public TitleService(
+            ConversationRepository conversationRepository,
+            @Qualifier("geminiFlashLiteClient") ChatClient chatClient
+    ) {
+        this.conversationRepository = conversationRepository;
+        this.chatClient = chatClient;
+    }
 
     public String generateTitle(String conversationId, String userMessage) {
         try {

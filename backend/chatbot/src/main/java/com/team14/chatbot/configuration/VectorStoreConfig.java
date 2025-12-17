@@ -12,25 +12,45 @@ import org.springframework.context.annotation.Primary;
 @Configuration
 public class VectorStoreConfig {
 
-    @Bean(name = "knowledgeBaseVectorStore")
-    @Primary
-    @Qualifier("knowledgeBaseVectorStore")
-    public VectorStore knowledgeBaseVectorStore(JdbcTemplate jdbcTemplate, EmbeddingModel embeddingModel) {
+    @Bean(name = "knowledgeVectorStore")
+//    @Primary
+    @Qualifier("knowledgeVectorStore")
+    public VectorStore knowledgeBaseVectorStore(JdbcTemplate jdbcTemplate,
+//                                                @Qualifier("googleGenAiTextEmbedding") EmbeddingModel embeddingModel
+    BgeM3EmbeddingModel embeddingModel) {
         return PgVectorStore.builder(jdbcTemplate, embeddingModel) // Builder có tham số
-                .vectorTableName("kb_embeddings") // <-- BẮT BUỘC PHẢI THÊM
-                .dimensions(768)
+                .vectorTableName("knowledge_embedding_view") // <-- BẮT BUỘC PHẢI THÊM
+                .dimensions(1024)
                 .distanceType(PgVectorStore.PgDistanceType.COSINE_DISTANCE)
                 .indexType(PgVectorStore.PgIndexType.HNSW)
-                .initializeSchema(true)   // Tự động tạo table nếu chưa có
+                .initializeSchema(false) // Tự động tạo table nếu chưa có
+                .build();
+    }
+
+    @Bean(name = "caseStudiesVectorStore")
+//    @Primary
+    @Qualifier("caseStudiesVectorStore")
+    public VectorStore caseStudiesVectorStore(JdbcTemplate jdbcTemplate,
+//                                                @Qualifier("googleGenAiTextEmbedding") EmbeddingModel embeddingModel
+                                                BgeM3EmbeddingModel embeddingModel) {
+        return PgVectorStore.builder(jdbcTemplate, embeddingModel) // Builder có tham số
+                .vectorTableName("case_studies_embedding_view") // <-- BẮT BUỘC PHẢI THÊM
+                .dimensions(1024)
+                .distanceType(PgVectorStore.PgDistanceType.COSINE_DISTANCE)
+                .indexType(PgVectorStore.PgIndexType.HNSW)
+                .initializeSchema(false) // Tự động tạo table nếu chưa có
                 .build();
     }
 
     @Bean(name = "chatMemoryVectorStore")
     @Qualifier("chatMemoryVectorStore")
-    public VectorStore chatMemoryVectorStore(JdbcTemplate jdbcTemplate, EmbeddingModel embeddingModel) {
+    public VectorStore chatMemoryVectorStore(JdbcTemplate jdbcTemplate,
+//                                             @Qualifier("googleGenAiTextEmbedding") EmbeddingModel embeddingModel
+    BgeM3EmbeddingModel embeddingModel
+    ) {
         return PgVectorStore.builder(jdbcTemplate, embeddingModel) // Builder có tham số
                 .vectorTableName("chat_memory_embeddings") // <-- BẮT BUỘC PHẢI THÊM
-                .dimensions(768)
+                .dimensions(1024)
                 .distanceType(PgVectorStore.PgDistanceType.COSINE_DISTANCE)
                 .indexType(PgVectorStore.PgIndexType.HNSW)
                 .initializeSchema(true)
