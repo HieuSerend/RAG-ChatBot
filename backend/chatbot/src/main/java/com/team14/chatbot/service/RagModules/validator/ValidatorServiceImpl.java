@@ -46,7 +46,7 @@ public class ValidatorServiceImpl implements ValidatorService {
     // --- 1. INPUT VALIDATION ---
     @Override
     public ValidationResult validateInput(String userInput) {
-        log.info("Validating Input Safety: {}", userInput);
+        log.info("Validating input using rule-based checks: {}", userInput);
 
         // Rule-based
         ValidationResult ruleBasedResult = applyRuleBasedValidation(userInput);

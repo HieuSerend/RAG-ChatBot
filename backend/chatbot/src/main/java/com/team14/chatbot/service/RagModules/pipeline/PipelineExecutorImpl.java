@@ -82,6 +82,7 @@ public class PipelineExecutorImpl implements PipelineExecutorService {
             Constraints:
             - Use ONLY the provided knowledge base.
             - If information is missing, clearly state that.
+            - Only answer question related to finance
 
             User question:
             "{query}"
@@ -129,11 +130,14 @@ public class PipelineExecutorImpl implements PipelineExecutorService {
             return plan.getDirectResponse();
         }
 
-        // intentPipeline: xử lý tuần tự 1 query duy nhất theo cấu hình trong
+            // intentPipeline: xử lý tuần tự 1 query duy nhất theo cấu hình trong
         // PipelinePlan.
         // Các bước intent routing, step-back, HyDE, multi-query... đã được xử lý
         // trước ở QueryProcessing / Planner.
         String pipelineQuery = plan.getPipelineQuery() != null ? plan.getPipelineQuery() : plan.getQuery();
+        if ("CALCULATION".equalsIgnoreCase(plan.getIntent()) || "NON_FINANCIAL".equalsIgnoreCase(plan.getIntent())) {
+            pipelineQuery = plan.getQuery();
+        }
         AdvisoryAnalysisResult advisoryAnalysis = null;
 
         // For ADVISORY intent we still run structured analysis, but without changing
